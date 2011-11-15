@@ -834,15 +834,6 @@ int main(int argc, char * const argv[])
     	signal(SIGINT, &handle_sigint);
     	siginterrupt(SIGINT, 1);
 
-	if (geteuid() != 0) {
-		fprintf(stderr, "%s needs to be run with root privilege\n", argv[0]);
-		exit(ret);
-	}
-
-	power_rate_get(&dummy_rate, &discharging);
-	if (!discharging)
-		exit(ret);
-
 	for (;;) {
 		int c = getopt(argc, argv, "srhd:");
 		if (c == -1)
@@ -867,6 +858,15 @@ int main(int argc, char * const argv[])
 		max_readings = atoi(argv[optind++]);
 	if (optind < argc)
 		sample_delay = atoi(argv[optind++]);
+
+	if (geteuid() != 0) {
+		fprintf(stderr, "%s needs to be run with root privilege\n", argv[0]);
+		exit(ret);
+	}
+
+	power_rate_get(&dummy_rate, &discharging);
+	if (!discharging)
+		exit(ret);
 
 	log_init();
 	proc_info_load();
