@@ -845,6 +845,10 @@ static int monitor(int sock)
 		stats_ruler();
 	}
 
+	printf("Summary:\n");
+	printf("%6.2f Watts on Average with Standard Deviation %-6.2f\n",
+		average.value[POWER_RATE], stddev.value[POWER_RATE]);
+
 	free(stats);
 
 	return 0;
