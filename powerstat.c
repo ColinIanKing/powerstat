@@ -46,6 +46,8 @@
 #define MAX_READINGS	(10)		/* Number of samples to take */
 #define MAX_PIDS	(32769)		/* Hash Max PIDs */
 
+#define	RATE_ZERO_LIMIT	(0.001)		/* Less than this we call the power rate zero */
+
 #define CPU_USER	0
 #define CPU_NICE	1
 #define CPU_SYS		2
@@ -63,8 +65,10 @@
 #define PROC_EXIT	14
 #define MAX_VALUES	15
 
+/* Arg opt flags */
 #define OPTS_SHOW_PROC_ACTIVITY	(0x0001)
 #define OPTS_REDO_WHEN_BUSY	(0x0002)
+#define OPTS_ZERO_RATE_ALLOW	(0x0004)
 
 /* Statistics entry */
 typedef struct {
@@ -468,7 +472,8 @@ static int power_rate_get(double *rate, bool *discharging)
 				printf("Machine is NOT running on battery and hence "
 				       "we cannot measure power usage.\n");
 				*discharging = false;
-				break;
+				closedir(dir);
+				return -1;
 			}
 
 			ptr = strchr(buffer, ':');
@@ -486,6 +491,12 @@ static int power_rate_get(double *rate, bool *discharging)
 		*rate += power_rate + voltage * amps;
 	}
 	closedir(dir);
+
+	if ((!(opts & OPTS_ZERO_RATE_ALLOW)) && (*rate < RATE_ZERO_LIMIT)) {
+		printf("The power rate is zero, which does not make sense if you are running on a\n"
+		       "battery. If so, please plug in the AC power and then unplug and retry the test.\n");
+		return -1;
+	}
 
 	return 0;
 }
@@ -821,10 +832,11 @@ static int monitor(int sock)
  */
 void show_help(char * const argv[])
 {
-	printf("usage: %s [-s] [-d N] [-r] [-h] [delay [count]]\n", argv[0]);
+	printf("usage: %s [-s] [-d N] [-r] [-h] [-z] [delay [count]]\n", argv[0]);
 	printf("\t-s show process fork/exec/exit activity log\n");
 	printf("\t-d specify delay before stating, default is %d seconds\n", start_delay);
 	printf("\t-r redo a sample if we see process fork/exec/exit activity\n");
+	printf("\t-z forceable ignore zero power rate stats from the battery\n");
 	printf("\t-h show help\n");
 	printf("\tdelay: delay between each sample, default is %d seconds\n", SAMPLE_DELAY);
 	printf("\tcount: number of samples to take, default is %d\n", MAX_READINGS);
@@ -841,7 +853,7 @@ int main(int argc, char * const argv[])
     	siginterrupt(SIGINT, 1);
 
 	for (;;) {
-		int c = getopt(argc, argv, "srhd:");
+		int c = getopt(argc, argv, "srhd:z");
 		if (c == -1)
 			break;
 		switch (c) {
@@ -853,6 +865,9 @@ int main(int argc, char * const argv[])
 			break;
 		case 'r':
 			opts |= OPTS_REDO_WHEN_BUSY;
+			break;
+		case 'z':
+			opts |= OPTS_ZERO_RATE_ALLOW;
 			break;
 		case 'h':
 			show_help(argv);
