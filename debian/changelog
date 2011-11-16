@@ -1,3 +1,10 @@
+powerstat (0.01.01) precise; urgency=low
+
+  * fix typo in man page
+  * Makefile: add manpage and some minor debian helps
+
+ -- Colin King <colin.king@canonical.com>  Wed, 16 Nov 2011 19:28:00 +0000
+
 powerstat (0.01.00) precise; urgency=low
 
   * Initial version 
