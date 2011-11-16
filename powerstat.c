@@ -863,7 +863,7 @@ void show_help(char * const argv[])
 {
 	printf("usage: %s [-b] [-d secs] [-h] [-i idle] [-p] [-r] [-s] [-z] [delay [count]]\n", argv[0]);
 	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
-	printf("\t-d specify delay before stating, default is %d seconds\n", start_delay);
+	printf("\t-d specify delay before starting, default is %d seconds\n", start_delay);
 	printf("\t-h show help\n");
 	printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
 	printf("\t-p redo a sample if we see process fork/exec/exit activity\n");	
