@@ -47,6 +47,7 @@
 #define MAX_PIDS	(32769)		/* Hash Max PIDs */
 
 #define	RATE_ZERO_LIMIT	(0.001)		/* Less than this we call the power rate zero */
+#define IDLE_THRESHOLD	(98)		/* Less than this and we assume the machine is not idle */
 
 #define CPU_USER	0
 #define CPU_NICE	1
@@ -66,9 +67,10 @@
 #define MAX_VALUES	15
 
 /* Arg opt flags */
-#define OPTS_SHOW_PROC_ACTIVITY	(0x0001)
-#define OPTS_REDO_WHEN_BUSY	(0x0002)
-#define OPTS_ZERO_RATE_ALLOW	(0x0004)
+#define OPTS_SHOW_PROC_ACTIVITY	(0x0001)	/* dump out process activity */
+#define OPTS_REDO_NETLINK_BUSY	(0x0002)	/* tasks fork/exec/exit */
+#define OPTS_REDO_WHEN_NOT_IDLE	(0x0004)	/* when idle below idle_threshold */
+#define OPTS_ZERO_RATE_ALLOW	(0x0008)	/* force allow zero rates */
 
 /* Statistics entry */
 typedef struct {
@@ -94,9 +96,10 @@ typedef struct {
 } log_t;
 
 static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
-static int max_readings = MAX_READINGS;
-static int sample_delay = SAMPLE_DELAY;
-static int start_delay  = START_DELAY;
+static int max_readings   = MAX_READINGS;
+static int sample_delay   = SAMPLE_DELAY;
+static int start_delay    = START_DELAY;
+static int idle_threshold = IDLE_THRESHOLD;
 static log_t infolog;
 static int opts;
 static volatile int stop_recv;
@@ -268,15 +271,26 @@ static int netlink_listen(int sock)
 
 /*
  *  stats_clear()
+ *	clear stats 
+ */
+static void stats_clear(stats_t *stats)
+{
+	int i;
+
+	for (i=0; i<MAX_VALUES; i++)
+		stats->value[i] = 0.0;
+}
+
+/*
+ *  stats_clear_all()
  *	zero stats data
  */
-static void stats_clear(stats_t *stats, int n)
+static void stats_clear_all(stats_t *stats, int n)
 {
-	int i, j;
+	int i;
 
-	for (j=0; j<n; j++)
-		for (i=0; i<MAX_VALUES; i++)
-			stats[j].value[i] = 0.0;
+	for (i=0; i<n; i++)
+		stats_clear(&stats[i]);
 }
 
 /*
@@ -654,14 +668,14 @@ static int monitor(int sock)
 	stats_t s1, s2;
 	stats_t average, stddev, min, max;
 	int readings = 0;
-	bool redone = false;
+	int redone = 0;
 
 	if ((stats = calloc(max_readings, sizeof(stats_t))) == NULL) {
 		fprintf(stderr, "Cannot allocate statistics table.\n");
 		return -1;
 	}
 
-	stats_clear(stats, max_readings);
+	stats_clear_all(stats, max_readings);
 	stats_headings();
 
 	gettimeofday(&t1, NULL);
@@ -696,14 +710,31 @@ static int monitor(int sock)
 			bool discharging;
 
 			if (redone) {
-				printf("          --- Skipped sample(s) because of fork/exec/exit activity ---\n");
-				redone = false;
+				char buffer[80];
+				int indent;
+				snprintf(buffer, sizeof(buffer), "--- Skipped samples(s) because of %s%s%s ---",
+					redone & OPTS_REDO_WHEN_NOT_IDLE ? "low CPU idle" : "",
+					(redone & (OPTS_REDO_WHEN_NOT_IDLE | OPTS_REDO_NETLINK_BUSY)) ==
+					(OPTS_REDO_WHEN_NOT_IDLE | OPTS_REDO_NETLINK_BUSY) ? " and " : "",
+					redone & OPTS_REDO_NETLINK_BUSY ? "fork/exec/exit activity" : "");
+				indent = (80 - strlen(buffer)) / 2;
+				printf("%*.*s%s\n", indent, indent, "", buffer);
+				redone = 0;
 			}
 
 			time_now(tmbuffer, sizeof(tmbuffer));
 			gettimeofday(&t1, NULL);
 			stats_read(&s2);
 			stats_gather(&s1, &s2, &stats[readings]);
+
+			if ((opts & OPTS_REDO_WHEN_NOT_IDLE) &&
+			    (stats[readings].value[CPU_IDLE] < (double)idle_threshold)) {
+				stats_clear(&stats[readings]);
+				stats_read(&s1);
+				gettimeofday(&t1, NULL);
+				redone |= OPTS_REDO_WHEN_NOT_IDLE;
+				continue;
+			}	
 
 			if (power_rate_get(&stats[readings].value[POWER_RATE], &discharging) < 0) {
 				free(stats);
@@ -794,17 +825,11 @@ static int monitor(int sock)
 		}
 
 		/* Have we been asked to redo a sample on fork/exec/exit? */
-		if (opts & OPTS_REDO_WHEN_BUSY && redo) {
-			int i;
-			char tmbuffer[10];
-
-			time_now(tmbuffer, sizeof(tmbuffer));
-			for (i=0; i<MAX_VALUES; i++)
-				stats[readings].value[i] = 0.0;
-
+		if (opts & OPTS_REDO_NETLINK_BUSY && redo) {
+			stats_clear(&stats[readings]);
 			stats_read(&s1);
 			gettimeofday(&t1, NULL);
-			redone = true;
+			redone |= OPTS_REDO_NETLINK_BUSY;
 		}
         }
 
@@ -832,12 +857,15 @@ static int monitor(int sock)
  */
 void show_help(char * const argv[])
 {
-	printf("usage: %s [-s] [-d N] [-r] [-h] [-z] [delay [count]]\n", argv[0]);
-	printf("\t-s show process fork/exec/exit activity log\n");
+	printf("usage: %s [-b] [-d secs] [-h] [-i idle] [-p] [-r] [-s] [-z] [delay [count]]\n", argv[0]);
+	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
 	printf("\t-d specify delay before stating, default is %d seconds\n", start_delay);
-	printf("\t-r redo a sample if we see process fork/exec/exit activity\n");
-	printf("\t-z forceable ignore zero power rate stats from the battery\n");
 	printf("\t-h show help\n");
+	printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
+	printf("\t-p redo a sample if we see process fork/exec/exit activity\n");	
+	printf("\t-r redo a sample if busy and we see process activity (same as -b -p)\n");
+	printf("\t-s show process fork/exec/exit activity log\n");
+	printf("\t-z forceable ignore zero power rate stats from the battery\n");
 	printf("\tdelay: delay between each sample, default is %d seconds\n", SAMPLE_DELAY);
 	printf("\tcount: number of samples to take, default is %d\n", MAX_READINGS);
 }
@@ -853,32 +881,46 @@ int main(int argc, char * const argv[])
     	siginterrupt(SIGINT, 1);
 
 	for (;;) {
-		int c = getopt(argc, argv, "srhd:z");
+		int c = getopt(argc, argv, "bd:hi:prsz");
 		if (c == -1)
 			break;
 		switch (c) {
+		case 'b':
+			opts |= OPTS_REDO_WHEN_NOT_IDLE;
+			break;
 		case 'd':
 			start_delay = atoi(optarg);
-			break;
-		case 's':
-			opts |= OPTS_SHOW_PROC_ACTIVITY;
-			break;
-		case 'r':
-			opts |= OPTS_REDO_WHEN_BUSY;
-			break;
-		case 'z':
-			opts |= OPTS_ZERO_RATE_ALLOW;
 			break;
 		case 'h':
 			show_help(argv);
 			exit(EXIT_SUCCESS);
+		case 'i':
+			opts |= OPTS_REDO_WHEN_NOT_IDLE;
+			idle_threshold = atoi(optarg);
+			if ((idle_threshold < 0) || (idle_threshold > 99)) {
+				fprintf(stderr, "Idle threshold must be between 0..99\n");
+				exit(EXIT_FAILURE);
+			}
+			break;
+		case 'p':
+			opts |= OPTS_REDO_NETLINK_BUSY;
+			break;
+		case 'r':
+			opts |= (OPTS_REDO_NETLINK_BUSY | OPTS_REDO_WHEN_NOT_IDLE);
+			break;
+		case 's':
+			opts |= OPTS_SHOW_PROC_ACTIVITY;
+			break;
+		case 'z':
+			opts |= OPTS_ZERO_RATE_ALLOW;
+			break;
 		}
 	}
 
 	if (optind < argc)
-		max_readings = atoi(argv[optind++]);
-	if (optind < argc)
 		sample_delay = atoi(argv[optind++]);
+	if (optind < argc)
+		max_readings = atoi(argv[optind++]);
 
 	if (geteuid() != 0) {
 		fprintf(stderr, "%s needs to be run with root privilege\n", argv[0]);
