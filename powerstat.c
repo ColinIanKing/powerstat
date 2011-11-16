@@ -438,8 +438,10 @@ static int power_rate_get(double *rate, bool *discharging)
 	*rate = 0.0;
 	*discharging = true;
 
-	if ((dir = opendir("/proc/acpi/battery")) == NULL)
-		return 0;
+	if ((dir = opendir("/proc/acpi/battery")) == NULL) {
+		printf("Machine does not have a battery, cannot run the test.\n");
+		return -1;
+	}
 
 	while ((dirent = readdir(dir))) {
 		double voltage = 0.0;
@@ -691,10 +693,14 @@ static int monitor(int sock)
 			gettimeofday(&t1, NULL);
 			stats_read(&s2);
 			stats_gather(&s1, &s2, &stats[readings]);
-			power_rate_get(&stats[readings].value[POWER_RATE], &discharging);
+
+			if (power_rate_get(&stats[readings].value[POWER_RATE], &discharging) < 0) {
+				free(stats);
+				return -1; 	/* Failure to read */
+			}
 			if (!discharging) {
 				free(stats);
-				return -1;
+				return -1;	/* No longer discharging! */
 			}
 
 			stats_print(tmbuffer, false, &stats[readings]);
@@ -864,7 +870,9 @@ int main(int argc, char * const argv[])
 		exit(ret);
 	}
 
-	power_rate_get(&dummy_rate, &discharging);
+	if (power_rate_get(&dummy_rate, &discharging) < 0)
+		exit(ret);
+
 	if (!discharging)
 		exit(ret);
 
