@@ -869,7 +869,7 @@ void show_help(char * const argv[])
 	printf("\t-p redo a sample if we see process fork/exec/exit activity\n");	
 	printf("\t-r redo a sample if busy and we see process activity (same as -b -p)\n");
 	printf("\t-s show process fork/exec/exit activity log\n");
-	printf("\t-z forceable ignore zero power rate stats from the battery\n");
+	printf("\t-z forcibly ignore zero power rate stats from the battery\n");
 	printf("\tdelay: delay between each sample, default is %d seconds\n", SAMPLE_DELAY);
 	printf("\tcount: number of samples to take, default is %d\n", MAX_READINGS);
 }
