@@ -821,7 +821,7 @@ static int monitor(int sock)
  */
 void show_help(char * const argv[])
 {
-	printf("usage: %s [-s] [-h] [-d N] [delay [count]]\n", argv[0]);
+	printf("usage: %s [-s] [-d N] [-r] [-h] [delay [count]]\n", argv[0]);
 	printf("\t-s show process fork/exec/exit activity log\n");
 	printf("\t-d specify delay before stating, default is %d seconds\n", start_delay);
 	printf("\t-r redo a sample if we see process fork/exec/exit activity\n");
