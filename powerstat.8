@@ -1,0 +1,104 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.\" First parameter, NAME, should be all caps
+.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
+.\" other parameters are allowed: see man(7), man(1)
+.TH FWTS 1 "July 8, 2010"
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+fwts \- a firmware test suite to identify firmware bugs.
+.br
+
+.SH SYNOPSIS
+.B powerstat
+.RI [ \-b ]
+.RI [ \-d " secs]
+.RI [ \-h ]
+.RI [ \-i " idle]
+.RI [ \-p ]
+.RI [ \-r ]
+.RI [ \-s ]
+.RI [ \-z ]
+.RI [ delay " [count]]
+.br
+
+.SH DESCRIPTION
+powerstat is a program that measures the power consumption of a mobile PC that has
+a battery power souce.  The output is like vmstat but also shows
+power consumption statistics.  At the end of a run, powerstat
+will calculate the average, standard deviation and min/max of
+the gathered data.
+
+.SH OPTIONS
+powerstat options are as follow:
+.TP
+.B \-b
+redo a sample measurement if a system is busy, the default for busy is considered less than 98% CPU idle. The
+CPU idle threshold can be altered using the \-i option.
+.TP
+.B \-d
+specify delay before starting, default is 15 seconds. This gives the machine time to settle down and to 
+dim the laptop display when in idle mode.
+.TP
+.B \-h
+show help.
+.TP
+.B \-i
+specify the idle threshold (in % CPU idle) to force a re-sample measurement if the CPU is less idle than this
+level. This option implicitly enables the \-b option.
+.TP
+.B \-p
+redo a sample measurement if any processes fork(), exec() or exit().
+.TP
+.B \-r
+redo if system is not idle and any processes fork(), exec() or exit(), an alias for \-p \-b
+.TP
+.B \-s
+this dumps a log of the process fork(), exec() and exit() activity on completion.
+.TP
+.B \-z
+forcibly ignore zero power rate readings from the battery, don't use this unless you know what you are doing.
+.SH EXAMPLES
+.LP
+Measure power with the default of 10 samples with an interval of 10 seconds
+.RS 8
+sudo powerstat
+.RE
+.LP
+Measure power with 60 samples with an interval of 1 second
+.RS 8
+sudo powerstat 1 60
+.RE
+.LP
+Measure power and redo sampling if we are not idle and we detect  fork()/exec()/exit() activity
+.RS 8
+sudo powerstat -r
+.RE
+.LP
+Measure power and redo sampling if less that 95% idle
+.RS 8
+sudo powerstat -i 95
+.RE
+.LP
+Wait to settle for 1 minute then measure power every 20 seconds and show any fork()/exec()/exit() activity at end of the measuring
+.RS 8
+sudo powerstat -d 60 -s 20
+.RE
+.SH SEE ALSO
+.BR vmstat (8), 
+.BR powertop (8) 
+.SH AUTHOR
+powerstat was written by Colin King <colin.king@canonical.com>
+.PP
+This manual page was written by Colin King <colin.king@canonical.com>,
+for the Ubuntu project (but may be used by others).
