@@ -1,0 +1,17 @@
+Source: powerstat
+Section: devel
+Priority: optional
+Maintainer: Colin King <colin.king@ubuntu.com>
+Standards-Version: 3.9.2
+Build-Depends: cdbs, debhelper (>= 7)
+
+Package: powerstat
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: powerstat
+ Powerstat measures the power consumption of a mobile PC that has
+ a battery power souce.  The output is like vmstat but also shows
+ power consumption statistics.  At the end of a run, powerstat 
+ will calculate the average, standard deviation and min/max of
+ the gathered data.
+
