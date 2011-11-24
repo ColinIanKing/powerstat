@@ -41,9 +41,12 @@
 #include <linux/netlink.h>
 #include <linux/cn_proc.h>
 
-#define START_DELAY	(15)		/* Delay to wait before sampling */
+#define ROLLING_AVERAGE	 (120)		/* 2 minute rolling average for power usage calculation */
+#define MAX_MEASUREMENTS (ROLLING_AVERAGE)
+
+#define START_DELAY	(ROLLING_AVERAGE)/* Delay to wait before sampling */
 #define SAMPLE_DELAY	(10)		/* Delay between samples in seconds */
-#define MAX_READINGS	(10)		/* Number of samples to take */
+#define MAX_READINGS	(30)		/* Number of samples to take */
 #define MAX_PIDS	(32769)		/* Hash Max PIDs */
 
 #define	RATE_ZERO_LIMIT	(0.001)		/* Less than this we call the power rate zero */
@@ -72,9 +75,16 @@
 #define OPTS_REDO_WHEN_NOT_IDLE	(0x0004)	/* when idle below idle_threshold */
 #define OPTS_ZERO_RATE_ALLOW	(0x0008)	/* force allow zero rates */
 
+/* Measurement entry */
+typedef struct {
+	double	value;
+	time_t	when;
+} measurement_t;
+
 /* Statistics entry */
 typedef struct {
 	double	value[MAX_VALUES];
+	bool	inaccurate[MAX_VALUES];
 } stats_t;
 
 /* /proc info cache */
@@ -389,9 +399,9 @@ static void stats_ruler(void)
 static void stats_print(char *prefix, bool summary, stats_t *s)
 {
 	char *fmt = summary ?
-		"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %6.2f\n" :
-		"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %6.2f\n";
-
+		"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %6.2f%s\n" :
+		"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %6.2f%s\n";
+		
 	printf(fmt,
 		prefix,
 		s->value[CPU_USER], s->value[CPU_NICE],
@@ -399,7 +409,8 @@ static void stats_print(char *prefix, bool summary, stats_t *s)
 		s->value[CPU_IOWAIT], s->value[CPU_PROCS_RUN],
 		s->value[CPU_CTXT], s->value[CPU_INTR],
 		s->value[PROC_FORK], s->value[PROC_EXEC],
-		s->value[PROC_EXIT], s->value[POWER_RATE]);
+		s->value[PROC_EXIT], s->value[POWER_RATE],
+		s->inaccurate[POWER_RATE] ? "E" : "");
 }
 
 /*
@@ -415,6 +426,7 @@ static void stats_average_stddev_min_max(stats_t *stats,
 {
 	int i;
 	int j;
+	int valid;
 
 	for (j=0; j<MAX_VALUES; j++) {
 		double total = 0.0;
@@ -422,23 +434,37 @@ static void stats_average_stddev_min_max(stats_t *stats,
 		max->value[j] = -1E6;
 		min->value[j] = 1E6;
 
-		for (i=0; i<num; i++) {
-			if (stats[i].value[j] > max->value[j])
-				max->value[j] = stats[i].value[j];
-			if (stats[i].value[j] < min->value[j])
-				min->value[j] = stats[i].value[j];
-			total += stats[i].value[j];
+		for (valid=0,i=0; i<num; i++) {
+			if (!stats[i].inaccurate[j]) {
+				if (stats[i].value[j] > max->value[j])
+					max->value[j] = stats[i].value[j];
+				if (stats[i].value[j] < min->value[j])
+					min->value[j] = stats[i].value[j];
+				total += stats[i].value[j];
+				valid++;
+			}
 		}
-		average->value[j] = total / (double)num;
+		if (valid) 
+			average->value[j] = total / (double)valid;
+		else {
+			average->value[j] = 0.0;
+			max->value[j] = 0.0;
+			min->value[j] = 0.0;
+		}
 
 		total = 0.0;
 		for (i=0; i<num; i++) {
-			double diff = (double)stats[i].value[j] - average->value[j];
-			diff = diff * diff;
-			total += diff;
+			if (!stats[i].inaccurate[j]) {
+				double diff = (double)stats[i].value[j] - average->value[j];
+				diff = diff * diff;
+				total += diff;
+			}
 		}
-		stddev->value[j] = total / (double)num;
-		stddev->value[j] = sqrt(stddev->value[j]);
+		if (valid) {
+			stddev->value[j] = total / (double)num;
+			stddev->value[j] = sqrt(stddev->value[j]);
+		} else
+			stddev->value[j] = 0.0;
 	}
 }
 
@@ -446,15 +472,25 @@ static void stats_average_stddev_min_max(stats_t *stats,
  *  power_rate_get()
  *	get power discharge rate from battery
  */
-static int power_rate_get(double *rate, bool *discharging)
+static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 {
 	DIR *dir;
 	FILE *file;
 	struct dirent *dirent;
 	char filename[PATH_MAX];
+	time_t time_now, dt;
+
+	static measurement_t measurements[MAX_MEASUREMENTS];
+	static int index = 0;
+	int i, j;
+	
+	double total_watts = 0.0;
+	double total_capacity = 0.0;
+	double dw;
 
 	*rate = 0.0;
 	*discharging = true;
+	*inaccurate = true;
 
 	if ((dir = opendir("/proc/acpi/battery")) == NULL) {
 		printf("Machine does not have a battery, cannot run the test.\n");
@@ -463,8 +499,13 @@ static int power_rate_get(double *rate, bool *discharging)
 
 	while ((dirent = readdir(dir))) {
 		double voltage = 0.0;
-		double amps = 0.0;
-		double power_rate = 0.0;
+
+		double amps_rate = 0.0;
+		double amps_left = 0.0;
+
+		double watts_rate = 0.0;
+		double watts_left = 0.0;
+
 		char buffer[4096];
 		char *ptr;
 
@@ -494,24 +535,80 @@ static int power_rate_get(double *rate, bool *discharging)
 			if (ptr) {
 				ptr++;
 				if (strstr(buffer, "present voltage"))
-					voltage = strtoull(ptr, NULL, 10) / 1000.0;
-				if (strstr(buffer, "present rate") && strstr(ptr, "mW"))
-					power_rate = strtoull(ptr, NULL, 10) / 1000.0 ;
-				if (strstr(buffer, "present rate") && strstr(ptr, "mA"))
-					amps = strtoull(ptr, NULL, 10) / 1000.0;
+					voltage = strtoull(ptr, NULL, 10) / 1000.0;	
+
+				if (strstr(buffer, "present rate")) {
+					if (strstr(ptr, "mW"))
+						watts_rate = strtoull(ptr, NULL, 10) / 1000.0 ;
+					if (strstr(ptr, "mA"))
+						amps_rate = strtoull(ptr, NULL, 10) / 1000.0;
+				}
+
+				if (strstr(buffer, "remaining capacity")) {
+					if (strstr(ptr, "mW"))
+						watts_left = strtoull(ptr, NULL, 10) / 1000.0 ;
+					if (strstr(ptr, "mA"))
+						amps_left = strtoull(ptr, NULL, 10) / 1000.0;
+				}
 			}
 		}
 		fclose(file);
-		*rate += power_rate + voltage * amps;
+		total_watts    += watts_rate + voltage * amps_rate;		
+		total_capacity += watts_left + voltage * amps_left;
 	}
 	closedir(dir);
 
-	if ((!(opts & OPTS_ZERO_RATE_ALLOW)) && (*rate < RATE_ZERO_LIMIT)) {
-		printf("The power rate is zero, which does not make sense if you are running on a\n"
-		       "battery. If so, please plug in the AC power and then unplug and retry the test.\n");
-		return -1;
+	/*
+ 	 *  If the battery is helpful it supplies the rate already
+	 */
+	if (total_watts > RATE_ZERO_LIMIT) {
+		*rate = total_watts;
+		if (*rate < 0.0)
+			*inaccurate = true;
+		return 0;
 	}
 
+	/*
+	 *  Battery is less helpful, we need to figure the power rate by looking
+	 *  back in time, measuring capacity drop and figuring out the rate from
+	 *  this.  We keep track of the rate over a sliding window of ROLLING_AVERAGE
+	 *  seconds.
+	 */
+	time_now = time(NULL);
+
+	measurements[index].value = total_capacity;
+	measurements[index].when  = time_now;
+	index = (index + 1) % MAX_MEASUREMENTS;
+	
+	/*
+	 * Scan back in time for a sample that's > ROLLING_AVERAGE seconds away
+	 * and calculate power consumption based on this value and interval
+	 */
+	for (j = index, i = 0; i < MAX_MEASUREMENTS; i++) {
+		j--;
+		if (j<0)
+			j+= MAX_MEASUREMENTS;
+
+		if (measurements[j].when) {
+			dw = measurements[j].value - total_capacity;
+			dt = time_now - measurements[j].when;
+			*rate = 3600.0 * dw / dt;
+
+			if (time_now - measurements[j].when > ROLLING_AVERAGE) {
+				*inaccurate = false;
+				break;
+			}
+		}
+	}
+
+	/*
+	 *  We either have found a good measurement, or an estimate at this point, but
+	 *  is it valid?
+	 */
+	if (*rate < 0.0) {	
+		*rate = 0.0;
+		*inaccurate = true;
+	}
 	return 0;
 }
 
@@ -736,10 +833,13 @@ static int monitor(int sock)
 				continue;
 			}	
 
-			if (power_rate_get(&stats[readings].value[POWER_RATE], &discharging) < 0) {
+			if (power_rate_get(&stats[readings].value[POWER_RATE],
+					   &discharging,
+					   &stats[readings].inaccurate[POWER_RATE]) < 0) {
 				free(stats);
 				return -1; 	/* Failure to read */
 			}
+		
 			if (!discharging) {
 				free(stats);
 				return -1;	/* No longer discharging! */
@@ -879,7 +979,9 @@ int main(int argc, char * const argv[])
     	int sock;
 	double dummy_rate;
 	bool discharging;
+	bool dummy_inaccurate;
 	int ret = EXIT_FAILURE;
+	int i;
 
     	signal(SIGINT, &handle_sigint);
     	siginterrupt(SIGINT, 1);
@@ -894,6 +996,10 @@ int main(int argc, char * const argv[])
 			break;
 		case 'd':
 			start_delay = atoi(optarg);
+			if (start_delay < 0) {
+				fprintf(stderr, "Start delay must be 0 or more seconds\n");
+				exit(EXIT_FAILURE);
+			}
 			break;
 		case 'h':
 			show_help(argv);
@@ -931,11 +1037,18 @@ int main(int argc, char * const argv[])
 		exit(ret);
 	}
 
-	if (power_rate_get(&dummy_rate, &discharging) < 0)
+	if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
 		exit(ret);
+	printf("Waiting %d seconds before starting (gathering samples)\n", start_delay);
 
-	if (!discharging)
+	for (i=0; i < start_delay; i++) {
+		if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
 		exit(ret);
+		if (sleep(1) || stop_recv)
+			exit(ret);
+		if (!discharging)
+			exit(ret);
+	}
 
 	log_init();
 	proc_info_load();
@@ -946,8 +1059,8 @@ int main(int argc, char * const argv[])
 	if (netlink_listen(sock) < 0)
 		goto abort_sock;
 
-	printf("Waiting %d seconds before starting..\n", start_delay);
-	if (sleep(start_delay) || stop_recv)
+
+	if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
 		goto abort_sock;
 
     	if (monitor(sock) ==  0)
