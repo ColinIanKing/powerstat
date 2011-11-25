@@ -300,7 +300,7 @@ static int netlink_listen(const int sock)
 
 /*
  *  stats_clear()
- *	clear stats 
+ *	clear stats
  */
 static void stats_clear(stats_t *stats)
 {
@@ -435,7 +435,7 @@ static void stats_print(const char *prefix, const bool summary, const stats_t *s
 	char *fmt = summary ?
 		"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %6.2f%s\n" :
 		"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %6.2f%s\n";
-		
+
 	printf(fmt,
 		prefix,
 		s->value[CPU_USER], s->value[CPU_NICE],
@@ -478,7 +478,7 @@ static void stats_average_stddev_min_max(stats_t *stats,
 				valid++;
 			}
 		}
-		if (valid) 
+		if (valid)
 			average->value[j] = total / (double)valid;
 		else {
 			average->value[j] = 0.0;
@@ -517,7 +517,6 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 	static measurement_t measurements[MAX_MEASUREMENTS];
 	static int index = 0;
 	int i, j;
-	
 	double total_watts = 0.0;
 	double total_capacity = 0.0;
 	double dw;
@@ -569,7 +568,7 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 			if (ptr) {
 				ptr++;
 				if (strstr(buffer, "present voltage"))
-					voltage = strtoull(ptr, NULL, 10) / 1000.0;	
+					voltage = strtoull(ptr, NULL, 10) / 1000.0;
 
 				if (strstr(buffer, "present rate")) {
 					if (strstr(ptr, "mW"))
@@ -587,7 +586,7 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 			}
 		}
 		fclose(file);
-		total_watts    += watts_rate + voltage * amps_rate;		
+		total_watts    += watts_rate + voltage * amps_rate;
 		total_capacity += watts_left + voltage * amps_left;
 	}
 	closedir(dir);
@@ -613,7 +612,7 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 	measurements[index].value = total_capacity;
 	measurements[index].when  = time_now;
 	index = (index + 1) % MAX_MEASUREMENTS;
-	
+
 	/*
 	 * Scan back in time for a sample that's > ROLLING_AVERAGE seconds away
 	 * and calculate power consumption based on this value and interval
@@ -639,7 +638,7 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 	 *  We either have found a good measurement, or an estimate at this point, but
 	 *  is it valid?
 	 */
-	if (*rate < 0.0) {	
+	if (*rate < 0.0) {
 		*rate = 0.0;
 		*inaccurate = true;
 	}
@@ -868,7 +867,7 @@ static int monitor(const int sock)
 				gettimeofday(&t1, NULL);
 				redone |= OPTS_REDO_WHEN_NOT_IDLE;
 				continue;
-			}	
+			}
 
 			if (power_rate_get(&stats[readings].value[POWER_RATE],
 					   &discharging,
@@ -876,7 +875,7 @@ static int monitor(const int sock)
 				free(stats);
 				return -1; 	/* Failure to read */
 			}
-		
+
 			if (!discharging) {
 				free(stats);
 				return -1;	/* No longer discharging! */
@@ -1004,7 +1003,7 @@ void show_help(char * const argv[])
 	printf("\t-d specify delay before starting, default is %d seconds\n", start_delay);
 	printf("\t-h show help\n");
 	printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
-	printf("\t-p redo a sample if we see process fork/exec/exit activity\n");	
+	printf("\t-p redo a sample if we see process fork/exec/exit activity\n");
 	printf("\t-r redo a sample if busy and we see process activity (same as -b -p)\n");
 	printf("\t-s show process fork/exec/exit activity log\n");
 	printf("\t-z forcibly ignore zero power rate stats from the battery\n");
@@ -1069,7 +1068,7 @@ int main(int argc, char * const argv[])
 	if (optind < argc) {
 		sample_delay = atoi(argv[optind++]);
 		if (sample_delay < 1) {
-			fprintf(stderr, "Sample delay must be >= 1\n");		
+			fprintf(stderr, "Sample delay must be >= 1\n");
 			exit(ret);
 		}
 	}
@@ -1111,7 +1110,7 @@ int main(int argc, char * const argv[])
 				exit(ret);
 			if (!discharging)
 				exit(ret);
-		}	
+		}
 		printf("\n\n");
 	}
 
@@ -1129,7 +1128,7 @@ int main(int argc, char * const argv[])
 
     	if (monitor(sock) ==  0)
 		ret = EXIT_SUCCESS;
-	
+
 abort_sock:
 	proc_info_unload();
 abort:
