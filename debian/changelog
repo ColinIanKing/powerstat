@@ -1,3 +1,10 @@
+powerstat (0.01.03) precise; urgency=low
+
+  * Add some slop to ensure multiple ~1 second updates make up 120 seconds of samples
+  * debian: remove cdbs Build-Depends
+
+ -- Colin King <colin.king@canonical.com>  Fri, 25 Nov 2011 19:46:00 +0000
+
 powerstat (0.01.02) precise; urgency=low
 
   * bump start delay to 3 mins add comments
