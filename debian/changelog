@@ -1,3 +1,14 @@
+powerstat (0.01.02) precise; urgency=low
+
+  * bump start delay to 3 mins add comments
+  * Minor whitespace tab cleanups
+  * minor alignment tweaks
+  * const func args
+  * Ensure we run for at least 5 mins of real data gathering.
+  * handle broken batteries that don't supply a rate
+
+ -- Colin King <colin.king@canonical.com>  Fri, 25 Nov 2011 19:19:00 +0000
+
 powerstat (0.01.01) precise; urgency=low
 
   * fix typo in man page
