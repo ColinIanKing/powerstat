@@ -42,17 +42,14 @@
 #include <linux/netlink.h>
 #include <linux/cn_proc.h>
 
-#define MIN_RUN_DURATION (5*60)		/* We recommend a run of 5 minutes */
-
-#define SAMPLE_DELAY	(10)		/* Delay between samples in seconds */
-#define ROLLING_AVERAGE	(120)		/* 2 minute rolling average for power usage calculation */
-#define MAX_MEASUREMENTS (ROLLING_AVERAGE)
-#define START_DELAY	(ROLLING_AVERAGE)/* Delay to wait before sampling */
-
-#define MAX_PIDS	(32769)		/* Hash Max PIDs */
-
-#define	RATE_ZERO_LIMIT	(0.001)		/* Less than this we call the power rate zero */
-#define IDLE_THRESHOLD	(98)		/* Less than this and we assume the machine is not idle */
+#define MIN_RUN_DURATION	(5*60)		/* We recommend a run of 5 minutes */
+#define SAMPLE_DELAY		(10)		/* Delay between samples in seconds */
+#define ROLLING_AVERAGE		(120)		/* 2 minute rolling average for power usage calculation */
+#define MAX_MEASUREMENTS 	(ROLLING_AVERAGE)
+#define START_DELAY		(ROLLING_AVERAGE)/* Delay to wait before sampling */
+#define MAX_PIDS		(32769)		/* Hash Max PIDs */
+#define	RATE_ZERO_LIMIT		(0.001)		/* Less than this we call the power rate zero */
+#define IDLE_THRESHOLD		(98)		/* Less than this and we assume the machine is not idle */
 
 #define CPU_USER	0
 #define CPU_NICE	1
