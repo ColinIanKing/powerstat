@@ -33,6 +33,7 @@
 #include <time.h>
 #include <getopt.h>
 
+#include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -41,12 +42,13 @@
 #include <linux/netlink.h>
 #include <linux/cn_proc.h>
 
-#define ROLLING_AVERAGE	 (120)		/* 2 minute rolling average for power usage calculation */
-#define MAX_MEASUREMENTS (ROLLING_AVERAGE)
+#define MIN_RUN_DURATION (5*60)		/* We recommend a run of 5 minutes */
 
-#define START_DELAY	(ROLLING_AVERAGE)/* Delay to wait before sampling */
 #define SAMPLE_DELAY	(10)		/* Delay between samples in seconds */
-#define MAX_READINGS	(30)		/* Number of samples to take */
+#define ROLLING_AVERAGE	(120)		/* 2 minute rolling average for power usage calculation */
+#define MAX_MEASUREMENTS (ROLLING_AVERAGE)
+#define START_DELAY	(ROLLING_AVERAGE)/* Delay to wait before sampling */
+
 #define MAX_PIDS	(32769)		/* Hash Max PIDs */
 
 #define	RATE_ZERO_LIMIT	(0.001)		/* Less than this we call the power rate zero */
@@ -106,13 +108,33 @@ typedef struct {
 } log_t;
 
 static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
-static int max_readings   = MAX_READINGS;
+static int max_readings;
 static int sample_delay   = SAMPLE_DELAY;
 static int start_delay    = START_DELAY;
 static int idle_threshold = IDLE_THRESHOLD;
 static log_t infolog;
 static int opts;
 static volatile int stop_recv;
+
+/*
+ *  tty_height()
+ *      try and find height of tty
+ */
+static int tty_height(void)
+{
+#ifdef TIOCGWINSZ
+	int fd = 0;
+        struct winsize ws;
+
+        /* if tty and we can get a sane width, return it */
+        if (isatty(fd) &&
+            (ioctl(fd, TIOCGWINSZ, &ws) != -1) &&
+            (0 < ws.ws_row) &&
+            (ws.ws_row == (size_t)ws.ws_row))
+                return ws.ws_row;
+#endif
+	return 25;
+}
 
 /*
  *  time_now()
@@ -390,6 +412,21 @@ static void stats_headings(void)
 static void stats_ruler(void)
 {
 	printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------\n");
+}
+
+/*
+ *
+ *
+ */
+static void row_increment(int *row)
+{
+	int tty_rows = tty_height();
+
+	(*row)++;
+	if ((tty_rows >2) && (*row >= tty_rows)) {
+		stats_headings();
+		*row = 2;
+	}
 }
 
 /*
@@ -766,6 +803,7 @@ static int monitor(int sock)
 	stats_t average, stddev, min, max;
 	int readings = 0;
 	int redone = 0;
+	int row = 0;
 
 	if ((stats = calloc(max_readings, sizeof(stats_t))) == NULL) {
 		fprintf(stderr, "Cannot allocate statistics table.\n");
@@ -774,6 +812,7 @@ static int monitor(int sock)
 
 	stats_clear_all(stats, max_readings);
 	stats_headings();
+	row++;
 
 	gettimeofday(&t1, NULL);
 	stats_read(&s1);
@@ -815,6 +854,7 @@ static int monitor(int sock)
 					(OPTS_REDO_WHEN_NOT_IDLE | OPTS_REDO_NETLINK_BUSY) ? " and " : "",
 					redone & OPTS_REDO_NETLINK_BUSY ? "fork/exec/exit activity" : "");
 				indent = (80 - strlen(buffer)) / 2;
+				row_increment(&row);
 				printf("%*.*s%s\n", indent, indent, "", buffer);
 				redone = 0;
 			}
@@ -845,6 +885,7 @@ static int monitor(int sock)
 				return -1;	/* No longer discharging! */
 			}
 
+			row_increment(&row);
 			stats_print(tmbuffer, false, &stats[readings]);
 			readings++;
 			s1 = s2;
@@ -971,7 +1012,7 @@ void show_help(char * const argv[])
 	printf("\t-s show process fork/exec/exit activity log\n");
 	printf("\t-z forcibly ignore zero power rate stats from the battery\n");
 	printf("\tdelay: delay between each sample, default is %d seconds\n", SAMPLE_DELAY);
-	printf("\tcount: number of samples to take, default is %d\n", MAX_READINGS);
+	printf("\tcount: number of samples to take\n");
 }
 
 int main(int argc, char * const argv[])
@@ -982,6 +1023,7 @@ int main(int argc, char * const argv[])
 	bool dummy_inaccurate;
 	int ret = EXIT_FAILURE;
 	int i;
+	int run_duration;
 
     	signal(SIGINT, &handle_sigint);
     	siginterrupt(SIGINT, 1);
@@ -1027,10 +1069,26 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	if (optind < argc)
+	if (optind < argc) {
 		sample_delay = atoi(argv[optind++]);
-	if (optind < argc)
+		if (sample_delay < 1) {
+			fprintf(stderr, "Sample delay must be >= 1\n");		
+			exit(ret);
+		}
+	}
+
+	run_duration = MIN_RUN_DURATION + START_DELAY - start_delay;
+
+	if (optind < argc) {
 		max_readings = atoi(argv[optind++]);
+		if ((max_readings * sample_delay) < run_duration) {
+			fprintf(stderr, "Number of readings should be at least %d\n",
+				run_duration / sample_delay);
+			exit(ret);
+		}
+	} else {
+		max_readings = run_duration / sample_delay;
+	}
 
 	if (geteuid() != 0) {
 		fprintf(stderr, "%s needs to be run with root privilege\n", argv[0]);
@@ -1039,15 +1097,25 @@ int main(int argc, char * const argv[])
 
 	if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
 		exit(ret);
-	printf("Waiting %d seconds before starting (gathering samples)\n", start_delay);
+	printf("Running for %d seconds (%d samples at %d second intervals).\n",
+			sample_delay * max_readings, max_readings, sample_delay);
+	printf("ACPI battery power measurments will start in %d seconds time\n",
+		ROLLING_AVERAGE);
+	printf("\n");
 
-	for (i=0; i < start_delay; i++) {
-		if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
-		exit(ret);
-		if (sleep(1) || stop_recv)
+	if (start_delay > 0) {
+		/* Gather up initial data */
+		for (i=0; i < start_delay; i++) {
+			printf("Waiting %d seconds before starting (gathering samples) \r", start_delay - i);
+			fflush(stdout);
+			if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
 			exit(ret);
-		if (!discharging)
-			exit(ret);
+			if (sleep(1) || stop_recv)
+				exit(ret);
+			if (!discharging)
+				exit(ret);
+		}	
+		printf("\n\n");
 	}
 
 	log_init();
@@ -1058,7 +1126,6 @@ int main(int argc, char * const argv[])
 
 	if (netlink_listen(sock) < 0)
 		goto abort_sock;
-
 
 	if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
 		goto abort_sock;
