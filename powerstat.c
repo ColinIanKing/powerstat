@@ -45,7 +45,7 @@
 #define MIN_RUN_DURATION	(5*60)		/* We recommend a run of 5 minutes */
 #define SAMPLE_DELAY		(10)		/* Delay between samples in seconds */
 #define ROLLING_AVERAGE		(120)		/* 2 minute rolling average for power usage calculation */
-#define MAX_MEASUREMENTS 	(ROLLING_AVERAGE)
+#define MAX_MEASUREMENTS 	(ROLLING_AVERAGE+10)
 #define START_DELAY		(3*60)		/* Delay to wait before sampling */
 #define MAX_PIDS		(32769)		/* Hash Max PIDs */
 #define	RATE_ZERO_LIMIT		(0.001)		/* Less than this we call the power rate zero */
