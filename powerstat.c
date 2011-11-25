@@ -46,7 +46,7 @@
 #define SAMPLE_DELAY		(10)		/* Delay between samples in seconds */
 #define ROLLING_AVERAGE		(120)		/* 2 minute rolling average for power usage calculation */
 #define MAX_MEASUREMENTS 	(ROLLING_AVERAGE)
-#define START_DELAY		(ROLLING_AVERAGE)/* Delay to wait before sampling */
+#define START_DELAY		(3*60)		/* Delay to wait before sampling */
 #define MAX_PIDS		(32769)		/* Hash Max PIDs */
 #define	RATE_ZERO_LIMIT		(0.001)		/* Less than this we call the power rate zero */
 #define IDLE_THRESHOLD		(98)		/* Less than this and we assume the machine is not idle */
@@ -105,13 +105,13 @@ typedef struct {
 } log_t;
 
 static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
-static int max_readings;
-static int sample_delay   = SAMPLE_DELAY;
-static int start_delay    = START_DELAY;
-static int idle_threshold = IDLE_THRESHOLD;
-static log_t infolog;
-static int opts;
-static volatile int stop_recv;
+static int max_readings;			/* number of samples to gather */
+static int sample_delay   = SAMPLE_DELAY;	/* time between each sample in secs */
+static int start_delay    = START_DELAY;	/* seconds before we start displaying stats */
+static int idle_threshold = IDLE_THRESHOLD;	/* lower than this and the CPU is busy */
+static log_t infolog;				/* log */
+static int opts;				/* opt arg opt flags */
+static volatile int stop_recv;			/* sighandler stop flag */
 
 /*
  *  tty_height()
@@ -130,7 +130,7 @@ static int tty_height(void)
             (ws.ws_row == (size_t)ws.ws_row))
                 return ws.ws_row;
 #endif
-	return 25;
+	return 25;	/* else standard tty 80x25 */
 }
 
 /*
