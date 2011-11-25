@@ -140,7 +140,7 @@ static int tty_height(void)
  *  time_now()
  *	Gather current time in buffer
  */
-static void time_now(char *buffer, size_t buflen)
+static void time_now(char *buffer, const size_t buflen)
 {
 	struct tm tm;
 	time_t now;
@@ -166,7 +166,7 @@ static void log_init(void)
  *  log_printf()
  *	append log messages in log list
  */
-static int log_printf(char *fmt, ...)
+static int log_printf(const char *fmt, ...)
 {
 	char buffer[4096];
 	char tmbuffer[10];
@@ -273,7 +273,7 @@ static int netlink_connect(void)
  *  netlink_listen()
  *	proc connector listen
  */
-static int netlink_listen(int sock)
+static int netlink_listen(const int sock)
 {
 	struct iovec iov[3];
 	struct nlmsghdr nlmsghdr;
@@ -317,7 +317,7 @@ static void stats_clear(stats_t *stats)
  *  stats_clear_all()
  *	zero stats data
  */
-static void stats_clear_all(stats_t *stats, int n)
+static void stats_clear_all(stats_t *stats, const int n)
 {
 	int i;
 
@@ -433,7 +433,7 @@ static void row_increment(int *row)
  *  stats_print()
  *	print out statistics with accuracy depending if it's a summary or not
  */
-static void stats_print(char *prefix, bool summary, stats_t *s)
+static void stats_print(const char *prefix, const bool summary, const stats_t *s)
 {
 	char *fmt = summary ?
 		"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %6.2f%s\n" :
@@ -455,7 +455,7 @@ static void stats_print(char *prefix, bool summary, stats_t *s)
  *	calculate average, std deviation, min and max
  */
 static void stats_average_stddev_min_max(stats_t *stats,
-	int num,
+	const int num,
 	stats_t *average,
 	stats_t *stddev,
 	stats_t *min,
@@ -653,7 +653,7 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
  *  proc_info_hash()
  * 	hash on PID
  */
-static int proc_info_hash(pid_t pid)
+static int proc_info_hash(const pid_t pid)
 {
 	return pid % MAX_PIDS;
 }
@@ -662,7 +662,7 @@ static int proc_info_hash(pid_t pid)
  *  proc_cmdline()
  *	get a processes cmdline text
  */
-static int proc_cmdline(pid_t pid, char *cmdline, size_t size)
+static int proc_cmdline(const pid_t pid, char *cmdline, const size_t size)
 {
 	FILE *fp;
 	char path[PATH_MAX];
@@ -681,7 +681,7 @@ static int proc_cmdline(pid_t pid, char *cmdline, size_t size)
  *  proc_info_get()
  *	get proc info on a given pid
  */
-static char *proc_info_get(pid_t pid)
+static char *proc_info_get(const pid_t pid)
 {
 	int i = proc_info_hash(pid);
 	int j;
@@ -697,7 +697,7 @@ static char *proc_info_get(pid_t pid)
  *  proc_info_free()
  *	free cached process info and remove from hash table
  */
-static void proc_info_free(pid_t pid)
+static void proc_info_free(const pid_t pid)
 {
 	int i = proc_info_hash(pid);
 	int j;
@@ -733,7 +733,7 @@ static void proc_info_unload(void)
  *   proc_info_add()
  *	add processes info of a given pid to the hash table
  */
-static int proc_info_add(pid_t pid)
+static int proc_info_add(const pid_t pid)
 {
 	int i, j;
 	proc_info_t *info;
@@ -793,7 +793,7 @@ static int proc_info_load(void)
  *   monitor()
  *	monitor system activity and power consumption
  */
-static int monitor(int sock)
+static int monitor(const int sock)
 {
 	ssize_t len;
 	struct nlmsghdr *nlmsghdr;
