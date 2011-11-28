@@ -592,12 +592,13 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 	closedir(dir);
 
 	/*
- 	 *  If the battery is helpful it supplies the rate already
+ 	 *  If the battery is helpful it supplies the rate already, in which case
+	 *  we know the results from the battery are as good as we can and we don't
+	 *  have to figure out anything from capacity change over time.
 	 */
 	if (total_watts > RATE_ZERO_LIMIT) {
 		*rate = total_watts;
-		if (*rate < 0.0)
-			*inaccurate = true;
+		*inaccurate = (total_watts < 0.0);
 		return 0;
 	}
 
