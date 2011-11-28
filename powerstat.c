@@ -73,6 +73,11 @@
 #define OPTS_REDO_NETLINK_BUSY	(0x0002)	/* tasks fork/exec/exit */
 #define OPTS_REDO_WHEN_NOT_IDLE	(0x0004)	/* when idle below idle_threshold */
 #define OPTS_ZERO_RATE_ALLOW	(0x0008)	/* force allow zero rates */
+#define OPTS_ROOT_PRIV		(0x0010)	/* has root privilege */
+
+#define OPTS_USE_NETLINK	(OPTS_SHOW_PROC_ACTIVITY | \
+				 OPTS_REDO_NETLINK_BUSY |  \
+				 OPTS_ROOT_PRIV)
 
 /* Measurement entry */
 typedef struct {
@@ -399,7 +404,10 @@ static void stats_gather(stats_t *s1, stats_t *s2, stats_t *res)
  */
 static void stats_headings(void)
 {
-	printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts\n");
+	if (opts & OPTS_USE_NETLINK)
+		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts\n");
+	else
+		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s  Watts\n");
 }
 
 /*
@@ -408,7 +416,10 @@ static void stats_headings(void)
  */
 static void stats_ruler(void)
 {
-	printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------\n");
+	if (opts & OPTS_USE_NETLINK)
+		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------\n");
+	else
+		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ------\n");
 }
 
 /*
@@ -432,19 +443,32 @@ static void row_increment(int *row)
  */
 static void stats_print(const char *prefix, const bool summary, const stats_t *s)
 {
-	char *fmt = summary ?
-		"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %6.2f%s\n" :
-		"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %6.2f%s\n";
-
-	printf(fmt,
-		prefix,
-		s->value[CPU_USER], s->value[CPU_NICE],
-		s->value[CPU_SYS], s->value[CPU_IDLE],
-		s->value[CPU_IOWAIT], s->value[CPU_PROCS_RUN],
-		s->value[CPU_CTXT], s->value[CPU_INTR],
-		s->value[PROC_FORK], s->value[PROC_EXEC],
-		s->value[PROC_EXIT], s->value[POWER_RATE],
-		s->inaccurate[POWER_RATE] ? "E" : "");
+	if (opts & OPTS_USE_NETLINK) {
+		char *fmt = summary ?
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %6.2f%s\n" :
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %6.2f%s\n";
+		printf(fmt,
+			prefix,
+			s->value[CPU_USER], s->value[CPU_NICE],
+			s->value[CPU_SYS], s->value[CPU_IDLE],
+			s->value[CPU_IOWAIT], s->value[CPU_PROCS_RUN],
+			s->value[CPU_CTXT], s->value[CPU_INTR],
+			s->value[PROC_FORK], s->value[PROC_EXEC],
+			s->value[PROC_EXIT], s->value[POWER_RATE],
+			s->inaccurate[POWER_RATE] ? "E" : "");
+	} else {
+		char *fmt = summary ?
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %6.2f%s\n" :
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %6.2f%s\n";
+		printf(fmt,
+			prefix,
+			s->value[CPU_USER], s->value[CPU_NICE],
+			s->value[CPU_SYS], s->value[CPU_IDLE],
+			s->value[CPU_IOWAIT], s->value[CPU_PROCS_RUN],
+			s->value[CPU_CTXT], s->value[CPU_INTR],
+			s->value[POWER_RATE],
+			s->inaccurate[POWER_RATE] ? "E" : "");
+	}
 }
 
 /*
@@ -815,21 +839,27 @@ static int monitor(const int sock)
 	stats_read(&s1);
 
 	while (!stop_recv && (readings < max_readings)) {
-		fd_set readfds;
+		bool redo = false;
 		int ret;
 		suseconds_t usec;
 		struct timeval tv;
 		char __attribute__ ((aligned(NLMSG_ALIGNTO)))buf[4096];
-		bool redo = false;
 
-		FD_ZERO(&readfds);
-		FD_SET(sock, &readfds);
 		gettimeofday(&t2, NULL);
 		usec = ((t1.tv_sec + sample_delay - t2.tv_sec) * 1000000) + (t1.tv_usec - t2.tv_usec);
 		tv.tv_sec = usec / 1000000;
 		tv.tv_usec = usec % 1000000;
-
-		if ((ret = select(sock+1, &readfds, NULL, NULL, &tv)) < 0) {
+		
+		if (opts & OPTS_USE_NETLINK) {
+			fd_set readfds;
+			FD_ZERO(&readfds);
+			FD_SET(sock, &readfds);
+			ret = select(sock+1, &readfds, NULL, NULL, &tv);
+		} else {
+			ret = select(0, NULL, NULL, NULL, &tv);
+		}
+		
+		if (ret < 0) {
 			if (errno == EINTR)
 				break;
 			fprintf(stderr,"select: %s\n", strerror(errno));
@@ -889,87 +919,89 @@ static int monitor(const int sock)
 			continue;
 		}
 
-        	if ((len = recv(sock, buf, sizeof(buf), 0)) == 0) {
-			free(stats);
-			return 0;
-		}
-		if (len == -1) {
-			if (errno == EINTR) {
-				continue;
-			} else {
-				fprintf(stderr,"recv: %s\n", strerror(errno));
+		if (opts & OPTS_USE_NETLINK) {
+        		if ((len = recv(sock, buf, sizeof(buf), 0)) == 0) {
 				free(stats);
-            			return -1;
+				return 0;
 			}
-		}
-
-		for (nlmsghdr = (struct nlmsghdr *)buf; NLMSG_OK (nlmsghdr, len); nlmsghdr = NLMSG_NEXT (nlmsghdr, len)) {
-			struct cn_msg *cn_msg;
-			struct proc_event *proc_ev;
-
-			if ((nlmsghdr->nlmsg_type == NLMSG_ERROR) ||
-			    (nlmsghdr->nlmsg_type == NLMSG_NOOP))
-                               	continue;
-
-			cn_msg = NLMSG_DATA(nlmsghdr);
-
-			if ((cn_msg->id.idx != CN_IDX_PROC) ||
-			    (cn_msg->id.val != CN_VAL_PROC))
-                                continue;
-
-			proc_ev = (struct proc_event *)cn_msg->data;
-
-       			switch (proc_ev->what) {
-           		case PROC_EVENT_FORK:
-				stats[readings].value[PROC_FORK] += 1.0;
-				proc_info_add(proc_ev->event_data.fork.child_pid);
-				if (opts & OPTS_SHOW_PROC_ACTIVITY) {
-               				log_printf("fork: parent tid=%d pid=%d -> child tid=%d pid=%d (%s)\n",
-                       				proc_ev->event_data.fork.parent_pid,
-                       				proc_ev->event_data.fork.parent_tgid,
-                       				proc_ev->event_data.fork.child_pid,
-                       				proc_ev->event_data.fork.child_tgid,
-						proc_info_get(proc_ev->event_data.fork.child_pid));
+			if (len == -1) {
+				if (errno == EINTR) {
+					continue;
+				} else {
+					fprintf(stderr,"recv: %s\n", strerror(errno));
+					free(stats);
+            				return -1;
 				}
-				redo = true;
-               			break;
-           		case PROC_EVENT_EXEC:
-				stats[readings].value[PROC_EXEC] += 1.0;
-				if (opts & OPTS_SHOW_PROC_ACTIVITY) {
-               				log_printf("exec: tid=%d pid=%d (%s)\n",
-                       				proc_ev->event_data.exec.process_pid,
-                       				proc_ev->event_data.exec.process_tgid,
-						proc_info_get(proc_ev->event_data.exec.process_pid));
-				}
-				redo = true;
-               			break;
-           		case PROC_EVENT_EXIT:
-				stats[readings].value[PROC_EXIT] += 1.0;
-				if (opts & OPTS_SHOW_PROC_ACTIVITY) {
-               				log_printf("exit: tid=%d pid=%d exit_code=%d (%s)\n",
-                        			proc_ev->event_data.exit.process_pid,
-                        			proc_ev->event_data.exit.process_tgid,
-                        			proc_ev->event_data.exit.exit_code,
-						proc_info_get(proc_ev->event_data.exit.process_pid));
-				}
-				if (proc_ev->event_data.exit.process_pid ==
-				    proc_ev->event_data.exit.process_tgid)
-					proc_info_free(proc_ev->event_data.exit.process_pid);
-				redo = true;
-               			break;
-			default:
-               			break;
 			}
-		}
+	
+			for (nlmsghdr = (struct nlmsghdr *)buf; NLMSG_OK (nlmsghdr, len); nlmsghdr = NLMSG_NEXT (nlmsghdr, len)) {
+				struct cn_msg *cn_msg;
+				struct proc_event *proc_ev;
+	
+				if ((nlmsghdr->nlmsg_type == NLMSG_ERROR) ||
+				    (nlmsghdr->nlmsg_type == NLMSG_NOOP))
+      	                         	continue;
 
-		/* Have we been asked to redo a sample on fork/exec/exit? */
-		if (opts & OPTS_REDO_NETLINK_BUSY && redo) {
-			stats_clear(&stats[readings]);
-			stats_read(&s1);
-			gettimeofday(&t1, NULL);
-			redone |= OPTS_REDO_NETLINK_BUSY;
-		}
-        }
+				cn_msg = NLMSG_DATA(nlmsghdr);
+
+				if ((cn_msg->id.idx != CN_IDX_PROC) ||
+				    (cn_msg->id.val != CN_VAL_PROC))
+    	                            continue;
+
+				proc_ev = (struct proc_event *)cn_msg->data;
+
+       				switch (proc_ev->what) {
+				case PROC_EVENT_FORK:
+					stats[readings].value[PROC_FORK] += 1.0;
+					proc_info_add(proc_ev->event_data.fork.child_pid);
+					if (opts & OPTS_SHOW_PROC_ACTIVITY) {
+               					log_printf("fork: parent tid=%d pid=%d -> child tid=%d pid=%d (%s)\n",
+                       					proc_ev->event_data.fork.parent_pid,
+                       					proc_ev->event_data.fork.parent_tgid,
+                       					proc_ev->event_data.fork.child_pid,
+                       					proc_ev->event_data.fork.child_tgid,
+							proc_info_get(proc_ev->event_data.fork.child_pid));
+					}
+					redo = true;
+               				break;
+           			case PROC_EVENT_EXEC:
+					stats[readings].value[PROC_EXEC] += 1.0;
+					if (opts & OPTS_SHOW_PROC_ACTIVITY) {
+               					log_printf("exec: tid=%d pid=%d (%s)\n",
+                       					proc_ev->event_data.exec.process_pid,
+                       					proc_ev->event_data.exec.process_tgid,
+							proc_info_get(proc_ev->event_data.exec.process_pid));
+					}
+					redo = true;
+               				break;
+           			case PROC_EVENT_EXIT:
+					stats[readings].value[PROC_EXIT] += 1.0;
+					if (opts & OPTS_SHOW_PROC_ACTIVITY) {
+               					log_printf("exit: tid=%d pid=%d exit_code=%d (%s)\n",
+                        				proc_ev->event_data.exit.process_pid,
+                        				proc_ev->event_data.exit.process_tgid,
+                        				proc_ev->event_data.exit.exit_code,
+							proc_info_get(proc_ev->event_data.exit.process_pid));
+					}
+					if (proc_ev->event_data.exit.process_pid ==
+					    proc_ev->event_data.exit.process_tgid)
+						proc_info_free(proc_ev->event_data.exit.process_pid);
+						redo = true;
+               				break;
+				default:
+               				break;
+				}
+			}
+
+			/* Have we been asked to redo a sample on fork/exec/exit? */
+			if (opts & OPTS_REDO_NETLINK_BUSY && redo) {
+				stats_clear(&stats[readings]);
+				stats_read(&s1);
+				gettimeofday(&t1, NULL);
+				redone |= OPTS_REDO_NETLINK_BUSY;
+			}
+        	}
+	}
 
 	/* Stats now gathered, calculate averages, stddev, min and max and display */
 	stats_average_stddev_min_max(stats, readings, &average, &stddev, &min, &max);
@@ -1014,7 +1046,7 @@ void show_help(char * const argv[])
 
 int main(int argc, char * const argv[])
 {
-    	int sock;
+    	int sock = -1;
 	double dummy_rate;
 	bool discharging;
 	bool dummy_inaccurate;
@@ -1087,8 +1119,10 @@ int main(int argc, char * const argv[])
 		max_readings = run_duration / sample_delay;
 	}
 
-	if (geteuid() != 0) {
-		fprintf(stderr, "%s needs to be run with root privilege\n", argv[0]);
+	if (geteuid() == 0) 
+		opts |= OPTS_ROOT_PRIV;
+	else if (opts & OPTS_USE_NETLINK) {
+		fprintf(stderr, "%s needs to be run with root privilege when using -p, -r, -s options\n", argv[0]);
 		exit(ret);
 	}
 
@@ -1116,13 +1150,15 @@ int main(int argc, char * const argv[])
 	}
 
 	log_init();
-	proc_info_load();
+	if (opts & OPTS_USE_NETLINK) {
+		proc_info_load();
 
-    	if ((sock = netlink_connect()) < 0)
-		goto abort;
+    		if ((sock = netlink_connect()) < 0)
+			goto abort;
 
-	if (netlink_listen(sock) < 0)
-		goto abort_sock;
+		if (netlink_listen(sock) < 0)
+			goto abort_sock;
+	}
 
 	if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
 		goto abort_sock;
@@ -1131,11 +1167,14 @@ int main(int argc, char * const argv[])
 		ret = EXIT_SUCCESS;
 
 abort_sock:
-	proc_info_unload();
+	if (opts & OPTS_USE_NETLINK)
+		proc_info_unload();
 abort:
-	log_dump();
-	log_free();
-	close(sock);
+	if (opts & OPTS_USE_NETLINK) {
+		log_dump();
+		log_free();
+		close(sock);
+	}
 
 	exit(ret);
 }
