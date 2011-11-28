@@ -1112,7 +1112,7 @@ int main(int argc, char * const argv[])
 			if (!discharging)
 				exit(ret);
 		}
-		printf("\n\n");
+		printf("%79.79s\r", "");
 	}
 
 	log_init();
