@@ -443,10 +443,22 @@ static void row_increment(int *row)
  */
 static void stats_print(const char *prefix, const bool summary, const stats_t *s)
 {
+	char buf[10];
+
+	if (summary) {
+		if (s->inaccurate[POWER_RATE])
+			snprintf(buf, sizeof(buf), "-N/A-");
+		else
+			snprintf(buf, sizeof(buf), "%6.2f", s->value[POWER_RATE]);
+	} else {
+		snprintf(buf, sizeof(buf), "%6.2f%s", s->value[POWER_RATE],
+			s->inaccurate[POWER_RATE] ? "E" : "");
+	}
+
 	if (opts & OPTS_USE_NETLINK) {
 		char *fmt = summary ?
-			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %6.2f%s\n" :
-			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %6.2f%s\n";
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %s\n" :
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %s\n";
 		printf(fmt,
 			prefix,
 			s->value[CPU_USER], s->value[CPU_NICE],
@@ -454,20 +466,18 @@ static void stats_print(const char *prefix, const bool summary, const stats_t *s
 			s->value[CPU_IOWAIT], s->value[CPU_PROCS_RUN],
 			s->value[CPU_CTXT], s->value[CPU_INTR],
 			s->value[PROC_FORK], s->value[PROC_EXEC],
-			s->value[PROC_EXIT], s->value[POWER_RATE],
-			s->inaccurate[POWER_RATE] ? "E" : "");
+			s->value[PROC_EXIT], buf);
 	} else {
 		char *fmt = summary ?
-			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %6.2f%s\n" :
-			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %6.2f%s\n";
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %s\n" :
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %s\n";
 		printf(fmt,
 			prefix,
 			s->value[CPU_USER], s->value[CPU_NICE],
 			s->value[CPU_SYS], s->value[CPU_IDLE],
 			s->value[CPU_IOWAIT], s->value[CPU_PROCS_RUN],
 			s->value[CPU_CTXT], s->value[CPU_INTR],
-			s->value[POWER_RATE],
-			s->inaccurate[POWER_RATE] ? "E" : "");
+			buf);
 	}
 }
 
@@ -502,27 +512,30 @@ static void stats_average_stddev_min_max(stats_t *stats,
 				valid++;
 			}
 		}
-		if (valid)
+
+		if (valid) {
 			average->value[j] = total / (double)valid;
-		else {
+			total = 0.0;
+			for (i=0; i<num; i++) {
+				if (!stats[i].inaccurate[j]) {
+					double diff = (double)stats[i].value[j] - average->value[j];
+					diff = diff * diff;
+					total += diff;
+				}
+			}
+			stddev->value[j] = total / (double)num;
+			stddev->value[j] = sqrt(stddev->value[j]);
+		} else {
+			average->inaccurate[j] = true;
+			max->inaccurate[j] = true;
+			min->inaccurate[j] = true;
+			stddev->inaccurate[j] = true;
+		
 			average->value[j] = 0.0;
 			max->value[j] = 0.0;
 			min->value[j] = 0.0;
-		}
-
-		total = 0.0;
-		for (i=0; i<num; i++) {
-			if (!stats[i].inaccurate[j]) {
-				double diff = (double)stats[i].value[j] - average->value[j];
-				diff = diff * diff;
-				total += diff;
-			}
-		}
-		if (valid) {
-			stddev->value[j] = total / (double)num;
-			stddev->value[j] = sqrt(stddev->value[j]);
-		} else
 			stddev->value[j] = 0.0;
+		}
 	}
 }
 
