@@ -559,7 +559,7 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 	double dw;
 
 	*rate = 0.0;
-	*discharging = true;
+	*discharging = false;
 	*inaccurate = true;
 
 	if ((dir = opendir("/proc/acpi/battery")) == NULL) {
@@ -593,13 +593,8 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 				break;
 
 			if (strstr(buffer, "charging state:") &&
-			    !strstr(buffer, "discharging")) {
-				printf("Machine is NOT running on battery and hence "
-				       "we cannot measure power usage.\n");
-				*discharging = false;
-				closedir(dir);
-				return -1;
-			}
+			    (strstr(buffer, "discharging") || strstr(buffer, "critical")))
+				*discharging = true;
 
 			ptr = strchr(buffer, ':');
 			if (ptr) {
@@ -627,6 +622,12 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 		total_capacity += watts_left + voltage * amps_left;
 	}
 	closedir(dir);
+
+	if (! *discharging) {
+		printf("Machine is NOT running on battery and hence "
+		       "we cannot measure power usage.\n");
+		return -1;
+	}
 
 	/*
  	 *  If the battery is helpful it supplies the rate already, in which case
