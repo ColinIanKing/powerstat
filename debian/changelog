@@ -1,8 +1,14 @@
+powerstat (0.01.08) precise; urgency=low
+    
+  * Handle broken HP battery info
+
+ -- Colin King <colin.king@canonical.com>  Tue, 21 Feb 2012 16:25:00 +0000
+
 powerstat (0.01.07) precise; urgency=low
     
   * Cater for critical discharging state too
 
- -- Colin King <colin.king@canonical.com>  Tue, 10 Jan 2011 17:29:00 +0000
+ -- Colin King <colin.king@canonical.com>  Tue, 10 Jan 2012 17:29:00 +0000
 
 powerstat (0.01.06) precise; urgency=low
 
