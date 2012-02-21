@@ -618,6 +618,25 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 			}
 		}
 		fclose(file);
+
+		/*
+		 * Some HP firmware is broken and has an undefined 'present voltage'
+		 * field and instead returns this in the design_voltage field, so
+		 * bodge around this.
+		 */
+		if (voltage == 0.0) {
+			sprintf(filename, "/proc/acpi/battery/%s/info", dirent->d_name);
+			if ((file = fopen(filename, "r")) != NULL) {
+				while (fgets(buffer, sizeof(buffer), file) != NULL) {
+					if (strstr(buffer, "design voltage:")) {
+						voltage = strtoull(ptr, NULL, 10) / 1000.0;
+						break;
+					}
+				}
+				fclose(file);
+			}
+		}
+
 		total_watts    += watts_rate + voltage * amps_rate;
 		total_capacity += watts_left + voltage * amps_left;
 	}
