@@ -1,3 +1,9 @@
+powerstat (0.01.09) precise; urgency=low
+    
+  * Fix typo
+
+ -- Colin King <colin.king@canonical.com>  Wed, 22 Feb 2012 16:42:00 +0000
+
 powerstat (0.01.08) precise; urgency=low
     
   * Handle broken HP battery info
