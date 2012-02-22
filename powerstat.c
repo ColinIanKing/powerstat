@@ -1163,7 +1163,7 @@ int main(int argc, char * const argv[])
 		exit(ret);
 	printf("Running for %d seconds (%d samples at %d second intervals).\n",
 			sample_delay * max_readings, max_readings, sample_delay);
-	printf("ACPI battery power measurments will start in %d seconds time\n",
+	printf("ACPI battery power measurements will start in %d seconds time\n",
 		start_delay);
 	printf("\n");
 
