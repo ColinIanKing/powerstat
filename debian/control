@@ -1,5 +1,5 @@
 Source: powerstat
-Section: devel
+Section: admin
 Priority: optional
 Maintainer: Colin King <colin.king@ubuntu.com>
 Standards-Version: 3.9.2
