@@ -1,7 +1,8 @@
 Source: powerstat
 Section: admin
 Priority: optional
-Maintainer: Colin King <colin.king@ubuntu.com>
+Maintainer: Colin King <colin.king@canonical.com>
+Uploaders: Kamal Mostafa <kamal@whence.com>
 Standards-Version: 3.9.3
 Build-Depends: debhelper (>= 7)
 
