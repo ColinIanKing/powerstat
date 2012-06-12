@@ -1,3 +1,11 @@
+powerstat (0.01.11-1) unstable; urgency=low
+
+  * Update version in Makefile
+  * Add debian/watch file
+  * Update Maintainer field and add Kamal Mostafa as an Uploader
+
+ -- Colin King <colin.king@canonical.com>  Tue, 12 Jun 2012 18:47:48 +0100
+
 powerstat (0.01.10-1) unstable; urgency=low
     
   * Add dist rule to Makefile
