@@ -1,3 +1,13 @@
+powerstat (0.01.10-1) unstable; urgency=low
+    
+  * Add dist rule to Makefile
+  * Add debian/source format
+  * debian: control: update Standards-Version to 3.9.3
+  * debian: control: fix Section
+  * debian: control: fix Description
+
+ -- Colin King <colin.king@canonical.com>  Tue, 12 Jun 2012 16:46:23 +0100
+
 powerstat (0.01.09) precise; urgency=low
     
   * Fix typo
