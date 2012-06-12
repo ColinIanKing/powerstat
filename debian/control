@@ -8,7 +8,7 @@ Build-Depends: debhelper (>= 7)
 Package: powerstat
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: powerstat
+Description: powerstat measures power consumed by a laptop
  Powerstat measures the power consumption of a mobile PC that has
  a battery power souce.  The output is like vmstat but also shows
  power consumption statistics.  At the end of a run, powerstat 
