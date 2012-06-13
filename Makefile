@@ -1,6 +1,6 @@
 CFLAGS += -Wall
 
-VERSION=0.01.11
+VERSION=0.01.12
 
 BINDIR=/usr/bin
 MANDIR=/usr/share/man/man8
