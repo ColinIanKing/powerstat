@@ -1,2 +1,2 @@
 version=3
-http://kernel.ubuntu.com/~cking/tarballs/powerstat/powerstat_(.+).tar.gz
+http://kernel.ubuntu.com/~cking/tarballs/powerstat/powerstat-(.+).tar.gz
