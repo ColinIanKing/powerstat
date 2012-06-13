@@ -1,4 +1,4 @@
-Format-Specification: http://svn.debian.org/wsvn/dep/web/deps/dep5.mdwn?op=file&rev=135
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Name: powerstat
 Maintainer: Colin King <colin.king@ubuntu.com>
 Source: git://kernel.ubuntu.com/cking/powerstat.git
