@@ -4,8 +4,8 @@ Maintainer: Colin King <colin.king@ubuntu.com>
 Source: git://kernel.ubuntu.com/cking/powerstat.git
 
 Files: *
-Copyright: 2011, Canonical Ltd
+Copyright: 2012, Canonical Ltd
 
 License: GPL-2
-On Debian systems, the complete text of the GNU General Public
-License can be found in `/usr/share/common-licenses/GPL-2'.
+ On Debian systems, the complete text of the GNU General Public
+ License can be found in `/usr/share/common-licenses/GPL-2'.
