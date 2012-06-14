@@ -1,3 +1,11 @@
+powerstat (0.01.14-1) unstable; urgency=low
+
+  * Bump version again
+  * Update copyright year in source
+  * Fix lintian errors in debian copyright file
+
+ -- Colin King <colin.king@canonical.com>  Thu, 14 Jun 2012 10:07:23 +0100
+
 powerstat (0.01.13-1) unstable; urgency=low
 
   * Update version once more
