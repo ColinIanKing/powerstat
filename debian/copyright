@@ -1,11 +1,10 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Name: powerstat
-Maintainer: Colin King <colin.king@ubuntu.com>
+Upstream-Name: powerstat
+Upstream-Contact: Colin King <colin.king@canonical.com>
 Source: git://kernel.ubuntu.com/cking/powerstat.git
 
 Files: *
 Copyright: 2012, Canonical Ltd
-
 License: GPL-2
  On Debian systems, the complete text of the GNU General Public
  License can be found in `/usr/share/common-licenses/GPL-2'.
