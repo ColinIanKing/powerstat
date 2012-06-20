@@ -1,3 +1,9 @@
+powerstat (0.01.16-1) unstable; urgency=low
+
+  * Initial Debian release (Closes: #678273)
+
+ -- Colin King <colin.king@canonical.com>  Wed, 20 Jun 2012 15:47:02 +0100
+
 powerstat (0.01.15-1) unstable; urgency=low
 
   * Update version
