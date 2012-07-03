@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #include <string.h>
 #include <unistd.h>
@@ -36,6 +37,7 @@
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 
 #include <linux/connector.h>
@@ -79,6 +81,16 @@
 				 OPTS_REDO_NETLINK_BUSY |  \
 				 OPTS_ROOT_PRIV)
 
+#define SYS_CLASS_POWER_SUPPLY	"/sys/class/power_supply"
+#define PROC_ACPI_BATTERY	"/proc/acpi/battery"
+
+#define SYS_FIELD_VOLTAGE		"POWER_SUPPLY_VOLTAGE_NOW="
+#define SYS_FIELD_WATTS_RATE		"POWER_SUPPLY_POWER_NOW="
+#define SYS_FIELD_WATTS_LEFT		"POWER_SUPPLY_ENERGY_NOW="
+#define SYS_FIELD_AMPS_RATE		"POWER_SUPPLY_CURRENT_NOW="
+#define SYS_FIELD_AMPS_LEFT		"POWER_SUPPLY_CHARGE_NOW="
+#define SYS_FIELD_STATUS_DISCHARGING  	"POWER_SUPPLY_STATUS=Discharging"
+
 /* Measurement entry */
 typedef struct {
 	double	value;
@@ -117,6 +129,25 @@ static int idle_threshold = IDLE_THRESHOLD;	/* lower than this and the CPU is bu
 static log_t infolog;				/* log */
 static int opts;				/* opt arg opt flags */
 static volatile int stop_recv;			/* sighandler stop flag */
+
+
+char *file_get(const char *file)
+{
+	FILE *fp;
+	char buffer[4096];
+
+	if ((fp = fopen(file, "r")) == NULL)
+		return NULL;
+
+	if (fgets(buffer, sizeof(buffer), fp) == NULL) {
+		fclose(fp);
+		return NULL;
+	}
+
+	fclose(fp);
+
+	return strdup(buffer);
+}
 
 /*
  *  tty_height()
@@ -311,8 +342,10 @@ static void stats_clear(stats_t *stats)
 {
 	int i;
 
-	for (i=0; i<MAX_VALUES; i++)
+	for (i=0; i<MAX_VALUES; i++) {
 		stats->value[i] = 0.0;
+		stats->inaccurate[i] = false;
+	}
 }
 
 /*
@@ -530,7 +563,7 @@ static void stats_average_stddev_min_max(stats_t *stats,
 			max->inaccurate[j] = true;
 			min->inaccurate[j] = true;
 			stddev->inaccurate[j] = true;
-		
+
 			average->value[j] = 0.0;
 			max->value[j] = 0.0;
 			min->value[j] = 0.0;
@@ -539,11 +572,176 @@ static void stats_average_stddev_min_max(stats_t *stats,
 	}
 }
 
+
+
 /*
- *  power_rate_get()
- *	get power discharge rate from battery
+ *  power_rate_get_sys_fs()
+ *	get power discharge rate from battery via /sys interface
  */
-static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
+static int power_rate_get_sys_fs(double *rate, bool *discharging, bool *inaccurate)
+{
+	DIR *dir;
+	struct dirent *dirent;
+	time_t time_now, dt;
+
+	static measurement_t measurements[MAX_MEASUREMENTS];
+	static int index = 0;
+	int i, j;
+	double total_watts = 0.0;
+	double total_capacity = 0.0;
+	double dw;
+
+	*rate = 0.0;
+	*discharging = false;
+	*inaccurate = true;
+
+	if ((dir = opendir(SYS_CLASS_POWER_SUPPLY)) == NULL) {
+		fprintf(stderr, "Machine does not have %s, cannot run the test.\n", SYS_CLASS_POWER_SUPPLY);
+		return -1;
+	}
+
+	do {
+		dirent = readdir(dir);
+		if (dirent && strlen(dirent->d_name) > 2) {
+			char path[PATH_MAX];
+			char *data;
+			int  val;
+			FILE *fp;
+
+			double voltage = 0.0;
+
+			double amps_rate = 0.0;
+			double amps_left = 0.0;
+
+			double watts_rate = 0.0;
+			double watts_left = 0.0;
+
+			/* Check that type field matches the expected type */
+			snprintf(path, sizeof(path), "%s/%s/type", SYS_CLASS_POWER_SUPPLY, dirent->d_name);
+			if ((data = file_get(path)) != NULL) {
+				bool mismatch = (strstr(data, "Battery") == NULL);
+				free(data);
+				if (mismatch)
+					continue;	/* type don't match, skip this entry */
+			} else
+				continue;		/* can't check type, skip this entry */
+
+			snprintf(path, sizeof(path), "%s/%s/uevent", SYS_CLASS_POWER_SUPPLY, dirent->d_name);
+			if ((fp = fopen(path, "r")) == NULL) {
+				fprintf(stderr, "Battery %s present but under supported - no state present.", dirent->d_name);
+				return -1;
+			} else {
+				char buffer[4096];
+				while (fgets(buffer, sizeof(buffer)-1, fp) != NULL) {
+					if (strstr(buffer, SYS_FIELD_STATUS_DISCHARGING))
+						*discharging = true;
+
+					if (strstr(buffer, SYS_FIELD_AMPS_LEFT) &&
+					    strlen(buffer) > sizeof(SYS_FIELD_AMPS_LEFT) - 1) {
+						sscanf(buffer + sizeof(SYS_FIELD_AMPS_LEFT) - 1, "%d", &val);
+						amps_left = (double)val / 1000000.0;
+					}
+
+					if (strstr(buffer, SYS_FIELD_WATTS_LEFT) &&
+					    strlen(buffer) > sizeof(SYS_FIELD_WATTS_LEFT) - 1) {
+						sscanf(buffer + sizeof(SYS_FIELD_WATTS_LEFT) - 1, "%d", &val);
+						watts_left = (double)val / 1000000.0;
+					}
+
+					if (strstr(buffer, SYS_FIELD_AMPS_RATE) &&
+					    strlen(buffer) > sizeof(SYS_FIELD_AMPS_RATE) - 1) {
+						sscanf(buffer + sizeof(SYS_FIELD_AMPS_RATE) - 1, "%d", &val);
+						amps_rate = (double)val / 1000000.0;
+					}
+
+					if (strstr(buffer, SYS_FIELD_WATTS_RATE) &&
+					    strlen(buffer) > sizeof(SYS_FIELD_WATTS_RATE) - 1) {
+						sscanf(buffer + sizeof(SYS_FIELD_WATTS_RATE) - 1, "%d", &val);
+						watts_rate = (double)val / 1000000.0;
+					}
+
+					if (strstr(buffer, SYS_FIELD_VOLTAGE) &&
+					    strlen(buffer) > sizeof(SYS_FIELD_VOLTAGE) - 1) {
+						sscanf(buffer + sizeof(SYS_FIELD_VOLTAGE) - 1, "%d", &val);
+						voltage = (double)val / 1000000.0;
+					}
+				}
+				total_watts    += watts_rate + voltage * amps_rate;
+				total_capacity += watts_left + voltage * amps_left;
+				fclose(fp);
+			}
+		}
+	} while (dirent);
+
+	closedir(dir);
+
+	if (! *discharging) {
+		printf("Machine is indicating it is not discharging and hence "
+		       "we cannot measure power usage.\n");
+		return -1;
+	}
+
+	/*
+ 	 *  If the battery is helpful it supplies the rate already, in which case
+	 *  we know the results from the battery are as good as we can and we don't
+	 *  have to figure out anything from capacity change over time.
+	 */
+	if (total_watts > RATE_ZERO_LIMIT) {
+		*rate = total_watts;
+		*inaccurate = (total_watts < 0.0);
+		return 0;
+	}
+
+	/*
+	 *  Battery is less helpful, we need to figure the power rate by looking
+	 *  back in time, measuring capacity drop and figuring out the rate from
+	 *  this.  We keep track of the rate over a sliding window of ROLLING_AVERAGE
+	 *  seconds.
+	 */
+	time_now = time(NULL);
+
+	measurements[index].value = total_capacity;
+	measurements[index].when  = time_now;
+	index = (index + 1) % MAX_MEASUREMENTS;
+
+	/*
+	 * Scan back in time for a sample that's > ROLLING_AVERAGE seconds away
+	 * and calculate power consumption based on this value and interval
+	 */
+	for (j = index, i = 0; i < MAX_MEASUREMENTS; i++) {
+		j--;
+		if (j<0)
+			j+= MAX_MEASUREMENTS;
+
+		if (measurements[j].when) {
+			dw = measurements[j].value - total_capacity;
+			dt = time_now - measurements[j].when;
+			*rate = 3600.0 * dw / dt;
+
+			if (time_now - measurements[j].when > ROLLING_AVERAGE) {
+				*inaccurate = false;
+				break;
+			}
+		}
+	}
+
+	/*
+	 *  We either have found a good measurement, or an estimate at this point, but
+	 *  is it valid?
+	 */
+	if (*rate < 0.0) {
+		*rate = 0.0;
+		*inaccurate = true;
+	}
+
+	return 0;
+}
+
+/*
+ *  power_rate_get_proc_acpi()
+ *	get power discharge rate from battery via /proc/acpi interface
+ */
+static int power_rate_get_proc_acpi(double *rate, bool *discharging, bool *inaccurate)
 {
 	DIR *dir;
 	FILE *file;
@@ -562,8 +760,8 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 	*discharging = false;
 	*inaccurate = true;
 
-	if ((dir = opendir("/proc/acpi/battery")) == NULL) {
-		printf("Machine does not have a battery, cannot run the test.\n");
+	if ((dir = opendir(PROC_ACPI_BATTERY)) == NULL) {
+		fprintf(stderr, "Machine does not have %s, cannot run the test.\n", PROC_ACPI_BATTERY);
 		return -1;
 	}
 
@@ -643,7 +841,7 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 	closedir(dir);
 
 	if (! *discharging) {
-		printf("Machine is NOT running on battery and hence "
+		printf("Machine is indicating it is not discharging and hence "
 		       "we cannot measure power usage.\n");
 		return -1;
 	}
@@ -701,6 +899,21 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 		*inaccurate = true;
 	}
 	return 0;
+}
+
+static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
+{
+	struct stat buf;
+
+	if ((stat(SYS_CLASS_POWER_SUPPLY, &buf) != -1) &&
+	    S_ISDIR(buf.st_mode))
+		return power_rate_get_sys_fs(rate, discharging, inaccurate);
+
+	if ((stat(PROC_ACPI_BATTERY, &buf) != -1) &&
+	    S_ISDIR(buf.st_mode))
+		return power_rate_get_proc_acpi(rate, discharging, inaccurate);
+
+	return -1;
 }
 
 /*
@@ -865,6 +1078,11 @@ static int monitor(const int sock)
 	}
 
 	stats_clear_all(stats, max_readings);
+	stats_clear(&average);
+	stats_clear(&stddev);
+	stats_clear(&min);
+	stats_clear(&max);
+
 	stats_headings();
 	row++;
 
@@ -882,7 +1100,7 @@ static int monitor(const int sock)
 		usec = ((t1.tv_sec + sample_delay - t2.tv_sec) * 1000000) + (t1.tv_usec - t2.tv_usec);
 		tv.tv_sec = usec / 1000000;
 		tv.tv_usec = usec % 1000000;
-		
+
 		if (opts & OPTS_USE_NETLINK) {
 			fd_set readfds;
 			FD_ZERO(&readfds);
@@ -891,7 +1109,7 @@ static int monitor(const int sock)
 		} else {
 			ret = select(0, NULL, NULL, NULL, &tv);
 		}
-		
+
 		if (ret < 0) {
 			if (errno == EINTR)
 				break;
@@ -966,11 +1184,11 @@ static int monitor(const int sock)
             				return -1;
 				}
 			}
-	
+
 			for (nlmsghdr = (struct nlmsghdr *)buf; NLMSG_OK (nlmsghdr, len); nlmsghdr = NLMSG_NEXT (nlmsghdr, len)) {
 				struct cn_msg *cn_msg;
 				struct proc_event *proc_ev;
-	
+
 				if ((nlmsghdr->nlmsg_type == NLMSG_ERROR) ||
 				    (nlmsghdr->nlmsg_type == NLMSG_NOOP))
       	                         	continue;
@@ -1152,7 +1370,7 @@ int main(int argc, char * const argv[])
 		max_readings = run_duration / sample_delay;
 	}
 
-	if (geteuid() == 0) 
+	if (geteuid() == 0)
 		opts |= OPTS_ROOT_PRIV;
 	else if (opts & OPTS_USE_NETLINK) {
 		fprintf(stderr, "%s needs to be run with root privilege when using -p, -r, -s options\n", argv[0]);
@@ -1173,7 +1391,7 @@ int main(int argc, char * const argv[])
 			printf("Waiting %d seconds before starting (gathering samples) \r", start_delay - i);
 			fflush(stdout);
 			if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
-			exit(ret);
+				exit(ret);
 			if (sleep(1) || stop_recv)
 				exit(ret);
 			if (!discharging)
