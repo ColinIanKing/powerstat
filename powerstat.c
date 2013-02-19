@@ -826,9 +826,13 @@ static int power_rate_get_proc_acpi(double *rate, bool *discharging, bool *inacc
 			sprintf(filename, "/proc/acpi/battery/%s/info", dirent->d_name);
 			if ((file = fopen(filename, "r")) != NULL) {
 				while (fgets(buffer, sizeof(buffer), file) != NULL) {
-					if (strstr(buffer, "design voltage:")) {
-						voltage = strtoull(ptr, NULL, 10) / 1000.0;
-						break;
+					ptr = strchr(buffer, ':');
+					if (ptr) {
+						ptr++;
+						if (strstr(buffer, "design voltage:")) {
+							voltage = strtoull(ptr, NULL, 10) / 1000.0;
+							break;
+						}
 					}
 				}
 				fclose(file);
