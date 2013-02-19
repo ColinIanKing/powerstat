@@ -44,6 +44,7 @@
 #include <linux/netlink.h>
 #include <linux/cn_proc.h>
 
+#define APP_NAME		"powerstat"
 #define MIN_RUN_DURATION	(5*60)		/* We recommend a run of 5 minutes */
 #define SAMPLE_DELAY		(10)		/* Delay between samples in seconds */
 #define ROLLING_AVERAGE		(120)		/* 2 minute rolling average for power usage calculation */
@@ -1281,6 +1282,7 @@ static int monitor(const int sock)
  */
 void show_help(char * const argv[])
 {
+	printf("%s, version %s\n\n", APP_NAME, VERSION);
 	printf("usage: %s [-b] [-d secs] [-h] [-i idle] [-p] [-r] [-s] [-z] [delay [count]]\n", argv[0]);
 	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
 	printf("\t-d specify delay before starting, default is %d seconds\n", start_delay);
