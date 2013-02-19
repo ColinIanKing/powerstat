@@ -343,7 +343,7 @@ static void stats_clear(stats_t *stats)
 {
 	int i;
 
-	for (i=0; i<MAX_VALUES; i++) {
+	for (i = 0; i < MAX_VALUES; i++) {
 		stats->value[i] = 0.0;
 		stats->inaccurate[i] = false;
 	}
@@ -357,7 +357,7 @@ static void stats_clear_all(stats_t *stats, const int n)
 {
 	int i;
 
-	for (i=0; i<n; i++)
+	for (i = 0; i < n; i++)
 		stats_clear(&stats[i]);
 }
 
@@ -530,13 +530,13 @@ static void stats_average_stddev_min_max(stats_t *stats,
 	int j;
 	int valid;
 
-	for (j=0; j<MAX_VALUES; j++) {
+	for (j = 0; j < MAX_VALUES; j++) {
 		double total = 0.0;
 
 		max->value[j] = -1E6;
 		min->value[j] = 1E6;
 
-		for (valid=0,i=0; i<num; i++) {
+		for (valid = 0, i = 0; i < num; i++) {
 			if (!stats[i].inaccurate[j]) {
 				if (stats[i].value[j] > max->value[j])
 					max->value[j] = stats[i].value[j];
@@ -550,7 +550,7 @@ static void stats_average_stddev_min_max(stats_t *stats,
 		if (valid) {
 			average->value[j] = total / (double)valid;
 			total = 0.0;
-			for (i=0; i<num; i++) {
+			for (i = 0; i < num; i++) {
 				if (!stats[i].inaccurate[j]) {
 					double diff = (double)stats[i].value[j] - average->value[j];
 					diff = diff * diff;
@@ -710,8 +710,8 @@ static int power_rate_get_sys_fs(double *rate, bool *discharging, bool *inaccura
 	 */
 	for (j = index, i = 0; i < MAX_MEASUREMENTS; i++) {
 		j--;
-		if (j<0)
-			j+= MAX_MEASUREMENTS;
+		if (j < 0)
+			j += MAX_MEASUREMENTS;
 
 		if (measurements[j].when) {
 			dw = measurements[j].value - total_capacity;
@@ -875,8 +875,8 @@ static int power_rate_get_proc_acpi(double *rate, bool *discharging, bool *inacc
 	 */
 	for (j = index, i = 0; i < MAX_MEASUREMENTS; i++) {
 		j--;
-		if (j<0)
-			j+= MAX_MEASUREMENTS;
+		if (j < 0)
+			j += MAX_MEASUREMENTS;
 
 		if (measurements[j].when) {
 			dw = measurements[j].value - total_capacity;
@@ -953,7 +953,7 @@ static char *proc_info_get(const pid_t pid)
 	int i = proc_info_hash(pid);
 	int j;
 
-	for (j = 0; j<MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
+	for (j = 0; j < MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
 		if ((proc_info[i] != NULL) && (proc_info[i]->pid == pid))
 			return proc_info[i]->cmdline;
 	}
@@ -969,7 +969,7 @@ static void proc_info_free(const pid_t pid)
 	int i = proc_info_hash(pid);
 	int j;
 
-	for (j = 0; j<MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
+	for (j = 0; j < MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
 		if ((proc_info[i] != NULL) && (proc_info[i]->pid == pid)) {
 			free(proc_info[i]->cmdline);
 			free(proc_info[i]);
@@ -987,7 +987,7 @@ static void proc_info_unload(void)
 {
 	int i;
 
-	for (i = 0; i<MAX_PIDS; i++) {
+	for (i = 0; i < MAX_PIDS; i++) {
 		if (proc_info[i] != NULL) {
 			free(proc_info[i]->cmdline);
 			free(proc_info[i]);
@@ -1026,7 +1026,7 @@ static int proc_info_add(const pid_t pid)
 	strcpy(info->cmdline, cmdline);
 
 	i = proc_info_hash(pid);
-	for (j = 0; j<MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
+	for (j = 0; j < MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
 		if (proc_info[i] == NULL) {
 			proc_info[i] = info;
 			return 0;
@@ -1388,7 +1388,7 @@ int main(int argc, char * const argv[])
 
 	if (start_delay > 0) {
 		/* Gather up initial data */
-		for (i=0; i < start_delay; i++) {
+		for (i = 0; i < start_delay; i++) {
 			printf("Waiting %d seconds before starting (gathering samples) \r", start_delay - i);
 			fflush(stdout);
 			if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
