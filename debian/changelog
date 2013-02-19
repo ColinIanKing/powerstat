@@ -1,3 +1,18 @@
+powerstat (0.01.18-1) unstable; urgency=low
+
+  * powerstat: minor whitespace cleanup
+  * Makefile: bump version
+  * Makefile: include CFLAGS and LDFLAGS into CC line
+  * debian: rules: force dh_ to apply flags during make phase
+  * Remove unwanted debian/powerstat.install
+  * debian: control: update Standards-Version to 3.9.4
+  * Put version number into the powerstat help info
+  * powerstat: update copyright year
+  * powerstat: shorten error message when machine is not discharging
+  * fix typo in debian control
+
+ -- Colin King <colin.king@canonical.com>  Tue, 19 Feb 2013 13:09:56 +0000
+
 powerstat (0.01.17-1) unstable; urgency=low
 
   * Update version
