@@ -676,8 +676,7 @@ static int power_rate_get_sys_fs(double *rate, bool *discharging, bool *inaccura
 	closedir(dir);
 
 	if (! *discharging) {
-		printf("Machine is indicating it is not discharging and hence "
-		       "we cannot measure power usage.\n");
+		printf("Machine is not discharging and hence we cannot measure power usage.\n");
 		return -1;
 	}
 
