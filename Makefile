@@ -6,7 +6,7 @@ BINDIR=/usr/bin
 MANDIR=/usr/share/man/man8
 
 powerstat: powerstat.o
-	$(CC) $< -lm -o $@
+	$(CC) $(CFLAGS) $< -lm -o $@ $(LDFLAGS)
 
 powerstat.8.gz: powerstat.8
 	gzip -c $< > $@
