@@ -1,3 +1,10 @@
+powerstat (0.01.20-1) unstable; urgency=low
+
+  * Makefile: bump version
+  * debian: control: set Architecture to just linux-any
+
+ -- Colin King <colin.king@canonical.com>  Tue, 19 Feb 2013 22:26:29 +0000
+
 powerstat (0.01.19-1) unstable; urgency=low
 
   * Makefile: bump version
