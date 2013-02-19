@@ -8,7 +8,7 @@ Build-Depends: debhelper (>= 7)
 Homepage: http://kernel.ubuntu.com/~cking/powerstat
 
 Package: powerstat
-Architecture: any
+Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: laptop power measuring tool
  Powerstat measures the power consumption of a mobile PC that has
