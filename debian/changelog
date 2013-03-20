@@ -1,3 +1,10 @@
+powerstat (0.01.21-1) unstable; urgency=low
+
+  * Makefile: bump version
+  * powerstat: handle cases where -ve deltas occur from /proc/stat
+
+ -- Colin King <colin.king@canonical.com>  Wed, 20 Mar 2013 16:01:05 +0000
+
 powerstat (0.01.20-1) unstable; urgency=low
 
   * Makefile: bump version
