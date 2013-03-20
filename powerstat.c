@@ -398,26 +398,36 @@ static int stats_read(stats_t *info)
 }
 
 /*
+ *  On Nexus 4 we occasionally get idle time going backwards so
+ *  work around this by ensuring we don't get -ve deltas.
+ */
+#define SANE_STATS(s1, s2) ((s2) - (s1)) < 0.0 ? 0.0 : ((s2) - (s1))
+
+/*
  *  stats_gather()
  *	gather up delta between last stats and current to get
  * 	some form of per sample accounting calculated.
  */
-static void stats_gather(stats_t *s1, stats_t *s2, stats_t *res)
+static bool stats_gather(stats_t *s1, stats_t *s2, stats_t *res)
 {
 	double total;
 
-	res->value[CPU_USER]    = s2->value[CPU_USER]    - s1->value[CPU_USER];
-	res->value[CPU_NICE]    = s2->value[CPU_NICE]    - s1->value[CPU_NICE];
-	res->value[CPU_SYS]     = s2->value[CPU_SYS]     - s1->value[CPU_SYS];
-	res->value[CPU_IDLE]    = s2->value[CPU_IDLE]    - s1->value[CPU_IDLE];
-	res->value[CPU_IOWAIT]  = s2->value[CPU_IOWAIT]  - s1->value[CPU_IOWAIT];
-	res->value[CPU_IRQ]     = s2->value[CPU_IRQ]     - s1->value[CPU_IRQ];
-	res->value[CPU_SOFTIRQ] = s2->value[CPU_SOFTIRQ] - s1->value[CPU_SOFTIRQ];
-	res->value[CPU_CTXT]	= s2->value[CPU_CTXT]    - s1->value[CPU_CTXT];
-	res->value[CPU_INTR]	= s2->value[CPU_INTR]    - s1->value[CPU_INTR];
+	res->value[CPU_USER]    = SANE_STATS(s1->value[CPU_USER]   , s2->value[CPU_USER]);
+	res->value[CPU_NICE]    = SANE_STATS(s1->value[CPU_NICE]   , s2->value[CPU_NICE]);
+	res->value[CPU_SYS]     = SANE_STATS(s1->value[CPU_SYS]    , s2->value[CPU_SYS]);
+	res->value[CPU_IDLE]    = SANE_STATS(s1->value[CPU_IDLE]   , s2->value[CPU_IDLE]);
+	res->value[CPU_IOWAIT]  = SANE_STATS(s1->value[CPU_IOWAIT] , s2->value[CPU_IOWAIT]);
+	res->value[CPU_IRQ]     = SANE_STATS(s1->value[CPU_IRQ]    , s2->value[CPU_IRQ]);
+	res->value[CPU_SOFTIRQ] = SANE_STATS(s1->value[CPU_SOFTIRQ], s2->value[CPU_SOFTIRQ]);
+	res->value[CPU_CTXT]	= SANE_STATS(s1->value[CPU_CTXT]   , s2->value[CPU_CTXT]);
+	res->value[CPU_INTR]	= SANE_STATS(s1->value[CPU_INTR]   , s2->value[CPU_INTR]);
 
 	total = res->value[CPU_USER] + res->value[CPU_NICE] +
 		res->value[CPU_SYS] + res->value[CPU_IDLE] + res->value[CPU_IOWAIT];
+
+	/*  This should not happen, but we need to avoid division by zero or weird results */
+	if (total <= 0.0)
+		return false;
 
 	res->value[CPU_USER]   = (100.0 * res->value[CPU_USER]) / total;
 	res->value[CPU_NICE]   = (100.0 * res->value[CPU_NICE]) / total;
@@ -430,6 +440,8 @@ static void stats_gather(stats_t *s1, stats_t *s2, stats_t *res)
 
 	res->value[CPU_PROCS_RUN] = s2->value[CPU_PROCS_RUN];
 	res->value[CPU_PROCS_BLK] = s2->value[CPU_PROCS_BLK];
+
+	return true;
 }
 
 /*
@@ -1144,7 +1156,17 @@ static int monitor(const int sock)
 			time_now(tmbuffer, sizeof(tmbuffer));
 			gettimeofday(&t1, NULL);
 			stats_read(&s2);
-			stats_gather(&s1, &s2, &stats[readings]);
+
+			/*
+			 *  Total ticks was zero, something is broken, so re-sample
+			 */
+			if (!stats_gather(&s1, &s2, &stats[readings])) {
+				stats_clear(&stats[readings]);
+				stats_read(&s1);
+				gettimeofday(&t1, NULL);
+				redone |= OPTS_REDO_WHEN_NOT_IDLE;
+				continue;
+			}
 
 			if ((opts & OPTS_REDO_WHEN_NOT_IDLE) &&
 			    (stats[readings].value[CPU_IDLE] < (double)idle_threshold)) {
