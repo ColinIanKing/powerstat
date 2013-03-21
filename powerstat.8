@@ -82,17 +82,17 @@ sudo powerstat 1 60
 .LP
 Measure power and redo sampling if we are not idle and we detect  fork()/exec()/exit() activity
 .RS 8
-sudo powerstat -r
+sudo powerstat \-r
 .RE
 .LP
 Measure power and redo sampling if less that 95% idle
 .RS 8
-sudo powerstat -i 95
+sudo powerstat \-i 95
 .RE
 .LP
 Wait to settle for 1 minute then measure power every 20 seconds and show any fork()/exec()/exit() activity at end of the measuring
 .RS 8
-sudo powerstat -d 60 -s 20
+sudo powerstat \-d 60 \-s 20
 .RE
 .SH SEE ALSO
 .BR vmstat (8), 
