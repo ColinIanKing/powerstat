@@ -1270,7 +1270,7 @@ static int monitor(const int sock)
 					if (proc_ev->event_data.exit.process_pid ==
 					    proc_ev->event_data.exit.process_tgid)
 						proc_info_free(proc_ev->event_data.exit.process_pid);
-						redo = true;
+					redo = true;
                				break;
 				default:
                				break;
