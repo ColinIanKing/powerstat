@@ -1022,6 +1022,18 @@ static int proc_info_add(const pid_t pid)
 	proc_info_t *info;
 	char path[PATH_MAX];
 	char cmdline[1024];
+	bool free_slot = false;
+
+	i = proc_info_hash(pid);
+	for (j = 0; j < MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
+		if (proc_info[i] == NULL) {
+			free_slot = true;
+			break;
+		}
+	}
+
+	if (!free_slot)
+		return -1;
 
 	memset(cmdline, 0, sizeof(cmdline));	/* keep valgrind happy */
 
@@ -1041,13 +1053,8 @@ static int proc_info_add(const pid_t pid)
 	}
 	strcpy(info->cmdline, cmdline);
 
-	i = proc_info_hash(pid);
-	for (j = 0; j < MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
-		if (proc_info[i] == NULL) {
-			proc_info[i] = info;
-			return 0;
-		}
-	}
+	proc_info[i] = info;
+
 	return -1;
 }
 
