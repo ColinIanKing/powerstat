@@ -221,13 +221,12 @@ static int log_printf(const char *fmt, ...)
 	log_item->text = calloc(1, len);
 	snprintf(log_item->text, len, "%s%s", tmbuffer, buffer);
 
-	if (infolog.head == NULL) {
+	if (infolog.head == NULL)
 		infolog.head = log_item;
-		infolog.tail = log_item;
-	} else {
+	else
 		infolog.tail->next = log_item;
-		infolog.tail = log_item;
-	}
+
+	infolog.tail = log_item;
 
 	return 0;
 }
