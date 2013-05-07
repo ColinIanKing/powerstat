@@ -642,6 +642,7 @@ static int power_rate_get_sys_fs(double *rate, bool *discharging, bool *inaccura
 			snprintf(path, sizeof(path), "%s/%s/uevent", SYS_CLASS_POWER_SUPPLY, dirent->d_name);
 			if ((fp = fopen(path, "r")) == NULL) {
 				fprintf(stderr, "Battery %s present but under supported - no state present.", dirent->d_name);
+				closedir(dir);
 				return -1;
 			} else {
 				char buffer[4096];
