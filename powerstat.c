@@ -205,12 +205,13 @@ static int log_printf(const char *fmt, ...)
 	char buffer[4096];
 	char tmbuffer[10];
 	va_list ap;
-	va_start(ap, fmt);
 	log_item_t *log_item;
 	size_t len;
 
+	va_start(ap, fmt);
 	time_now(tmbuffer, sizeof(tmbuffer));
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
 
 	if ((log_item = calloc(1, sizeof(log_t))) == NULL) {
 		fprintf(stderr, "Out of memory allocating log item\n");
@@ -227,8 +228,6 @@ static int log_printf(const char *fmt, ...)
 		infolog.tail->next = log_item;
 		infolog.tail = log_item;
 	}
-
-	va_end(ap);
 
 	return 0;
 }
