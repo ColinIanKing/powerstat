@@ -1,3 +1,16 @@
+powerstat (0.01.22-1) unstable; urgency=low
+
+  * Makefile: bump version
+  * powerstat: fix indentation that may lead to confusion
+  * powerstat: tidy up list append in log_printf
+  * powerstat: va_end is missing in error path in log_printf
+  * powerstat: need to close sock if bind fails
+  * powerstat: need to closedir on dir before we bail out on error return
+  * powerstat: fix leak of info when there are no free slots in table
+  * powerstat.8: ensure - sign is escaped in manual
+
+ -- Colin King <colin.king@canonical.com>  Tue, 7 May 2013 16:41:12 +0100
+
 powerstat (0.01.21-1) unstable; urgency=low
 
   * Makefile: bump version
