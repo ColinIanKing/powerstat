@@ -297,6 +297,7 @@ static int netlink_connect(void)
 
 	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		fprintf(stderr, "Bind failed: %s\n", strerror(errno));
+		close(sock);
 		return -1;
 	}
 
@@ -1459,7 +1460,8 @@ abort:
 	if (opts & OPTS_USE_NETLINK) {
 		log_dump();
 		log_free();
-		close(sock);
+		if (sock != -1)
+			close(sock);
 	}
 
 	exit(ret);
