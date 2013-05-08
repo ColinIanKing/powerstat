@@ -929,6 +929,7 @@ static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
 	    S_ISDIR(buf.st_mode))
 		return power_rate_get_proc_acpi(rate, discharging, inaccurate);
 
+	fprintf(stderr, "Machine does not seem to have a battery, cannot measure power.\n");
 	return -1;
 }
 
