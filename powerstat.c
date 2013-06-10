@@ -1122,6 +1122,8 @@ static int monitor(const int sock)
 
 		gettimeofday(&t2, NULL);
 		usec = ((t1.tv_sec + sample_delay - t2.tv_sec) * 1000000) + (t1.tv_usec - t2.tv_usec);
+		if (usec < 0)
+			goto sample_now;
 		tv.tv_sec = usec / 1000000;
 		tv.tv_usec = usec % 1000000;
 
@@ -1147,6 +1149,7 @@ static int monitor(const int sock)
 			char tmbuffer[10];
 			bool discharging;
 
+sample_now:
 			if (redone) {
 				char buffer[80];
 				int indent;
