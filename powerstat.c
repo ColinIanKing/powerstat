@@ -284,6 +284,8 @@ static int netlink_connect(void)
 	struct sockaddr_nl addr;
 
     	if ((sock = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_CONNECTOR)) < 0) {
+		if (errno == EPROTONOSUPPORT)
+			return -EPROTONOSUPPORT;
 		fprintf(stderr, "Socket failed: %s\n", strerror(errno));
 		return -1;
 	}
@@ -1440,13 +1442,19 @@ int main(int argc, char * const argv[])
 
 	log_init();
 	if (opts & OPTS_USE_NETLINK) {
-		proc_info_load();
-
-    		if ((sock = netlink_connect()) < 0)
+    		sock = netlink_connect();
+		if (sock == -EPROTONOSUPPORT) {
+			if (opts & OPTS_SHOW_PROC_ACTIVITY)
+				printf("Cannot show process activity with this kernel.\n");
+			opts &= ~OPTS_USE_NETLINK;
+		} else if (sock < 0) {
 			goto abort;
+		} else {
+			proc_info_load();
 
-		if (netlink_listen(sock) < 0)
-			goto abort_sock;
+			if (netlink_listen(sock) < 0)
+				goto abort_sock;
+		}
 	}
 
 	if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
