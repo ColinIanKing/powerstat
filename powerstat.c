@@ -132,7 +132,7 @@ static int opts;				/* opt arg opt flags */
 static volatile int stop_recv;			/* sighandler stop flag */
 
 
-char *file_get(const char *file)
+char *file_get(const char *const file)
 {
 	FILE *fp;
 	char buffer[4096];
@@ -174,7 +174,7 @@ static int tty_height(void)
  *  time_now()
  *	Gather current time in buffer
  */
-static void time_now(char *buffer, const size_t buflen)
+static void time_now(char *const buffer, const size_t buflen)
 {
 	struct tm tm;
 	time_t now;
@@ -200,7 +200,7 @@ static void log_init(void)
  *  log_printf()
  *	append log messages in log list
  */
-static int log_printf(const char *fmt, ...)
+static int log_printf(const char *const fmt, ...)
 {
 	char buffer[4096];
 	char tmbuffer[10];
@@ -341,7 +341,7 @@ static int netlink_listen(const int sock)
  *  stats_clear()
  *	clear stats
  */
-static void stats_clear(stats_t *stats)
+static void stats_clear(stats_t *const stats)
 {
 	int i;
 
@@ -355,7 +355,7 @@ static void stats_clear(stats_t *stats)
  *  stats_clear_all()
  *	zero stats data
  */
-static void stats_clear_all(stats_t *stats, const int n)
+static void stats_clear_all(stats_t *const stats, const int n)
 {
 	int i;
 
@@ -367,7 +367,7 @@ static void stats_clear_all(stats_t *stats, const int n)
  *  stats_read()
  *	gather pertinent /proc/stat data
  */
-static int stats_read(stats_t *info)
+static int stats_read(stats_t *const info)
 {
 	FILE *fp;
 	char buf[4096];
@@ -410,7 +410,10 @@ static int stats_read(stats_t *info)
  *	gather up delta between last stats and current to get
  * 	some form of per sample accounting calculated.
  */
-static bool stats_gather(stats_t *s1, stats_t *s2, stats_t *res)
+static bool stats_gather(
+	const stats_t *const s1,
+	const stats_t *const s2,
+	stats_t *const res)
 {
 	double total;
 
@@ -474,7 +477,7 @@ static void stats_ruler(void)
  *
  *
  */
-static void row_increment(int *row)
+static void row_increment(int *const row)
 {
 	int tty_rows = tty_height();
 
@@ -489,7 +492,10 @@ static void row_increment(int *row)
  *  stats_print()
  *	print out statistics with accuracy depending if it's a summary or not
  */
-static void stats_print(const char *prefix, const bool summary, const stats_t *s)
+static void stats_print(
+	const char *const prefix,
+	const bool summary,
+	const stats_t *const s)
 {
 	char buf[10];
 
@@ -533,12 +539,13 @@ static void stats_print(const char *prefix, const bool summary, const stats_t *s
  *  stats_average_stddev_min_max()
  *	calculate average, std deviation, min and max
  */
-static void stats_average_stddev_min_max(stats_t *stats,
+static void stats_average_stddev_min_max(
+	const stats_t *const stats,
 	const int num,
-	stats_t *average,
-	stats_t *stddev,
-	stats_t *min,
-	stats_t *max)
+	stats_t *const average,
+	stats_t *const stddev,
+	stats_t *const min,
+	stats_t *const max)
 {
 	int i;
 	int j;
@@ -593,7 +600,10 @@ static void stats_average_stddev_min_max(stats_t *stats,
  *  power_rate_get_sys_fs()
  *	get power discharge rate from battery via /sys interface
  */
-static int power_rate_get_sys_fs(double *rate, bool *discharging, bool *inaccurate)
+static int power_rate_get_sys_fs(
+	double *const rate,
+	bool *const discharging,
+	bool *const inaccurate)
 {
 	DIR *dir;
 	struct dirent *dirent;
@@ -756,7 +766,10 @@ static int power_rate_get_sys_fs(double *rate, bool *discharging, bool *inaccura
  *  power_rate_get_proc_acpi()
  *	get power discharge rate from battery via /proc/acpi interface
  */
-static int power_rate_get_proc_acpi(double *rate, bool *discharging, bool *inaccurate)
+static int power_rate_get_proc_acpi(
+	double *const rate,
+	bool *const discharging,
+	bool *const inaccurate)
 {
 	DIR *dir;
 	FILE *file;
@@ -920,7 +933,10 @@ static int power_rate_get_proc_acpi(double *rate, bool *discharging, bool *inacc
 	return 0;
 }
 
-static int power_rate_get(double *rate, bool *discharging, bool *inaccurate)
+static int power_rate_get(
+	double *const rate,
+	bool *const discharging,
+	bool *const inaccurate)
 {
 	struct stat buf;
 
@@ -949,7 +965,10 @@ static int proc_info_hash(const pid_t pid)
  *  proc_cmdline()
  *	get a processes cmdline text
  */
-static int proc_cmdline(const pid_t pid, char *cmdline, const size_t size)
+static int proc_cmdline(
+	const pid_t pid,
+	char *const cmdline,
+	const size_t size)
 {
 	FILE *fp;
 	char path[PATH_MAX];
@@ -1320,7 +1339,7 @@ sample_now:
  *  show_help()
  *	simple help
  */
-void show_help(char * const argv[])
+void show_help(char *const argv[])
 {
 	printf("%s, version %s\n\n", APP_NAME, VERSION);
 	printf("usage: %s [-b] [-d secs] [-h] [-i idle] [-p] [-r] [-s] [-z] [delay [count]]\n", argv[0]);
