@@ -271,6 +271,7 @@ static void log_free(void)
  */
 static void handle_sigint(int dummy)
 {
+	(void)dummy;
 	stop_recv = 1;
 }
 
