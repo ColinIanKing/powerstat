@@ -145,7 +145,7 @@ char *file_get(const char *const file)
 		return NULL;
 	}
 
-	fclose(fp);
+	(void)fclose(fp);
 
 	return strdup(buffer);
 }
@@ -179,8 +179,8 @@ static void time_now(char *const buffer, const size_t buflen)
 	struct tm tm;
 	time_t now;
 
-	time(&now);
-	localtime_r(&now, &tm);
+	(void)time(&now);
+	(void)localtime_r(&now, &tm);
 
 	snprintf(buffer, buflen, "%2.2d:%2.2d:%2.2d ",
 		tm.tm_hour, tm.tm_min, tm.tm_sec);
@@ -298,7 +298,7 @@ static int netlink_connect(void)
 
 	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		fprintf(stderr, "Bind failed: %s\n", strerror(errno));
-		close(sock);
+		(void)close(sock);
 		return -1;
 	}
 
@@ -394,7 +394,7 @@ static int stats_read(stats_t *const info)
 		if (strncmp(buf, "procs_blocked ", 14) == 0)
 			sscanf(buf, "%*s %lf", &(info->value[CPU_PROCS_BLK]));
 	}
-	fclose(fp);
+	(void)fclose(fp);
 
 	return 0;
 }
@@ -699,7 +699,7 @@ static int power_rate_get_sys_fs(
 		}
 	} while (dirent);
 
-	closedir(dir);
+	(void)closedir(dir);
 
 	if (! *discharging) {
 		printf("Machine is not discharging and hence we cannot measure power usage.\n");
@@ -843,7 +843,7 @@ static int power_rate_get_proc_acpi(
 				}
 			}
 		}
-		fclose(file);
+		(void)fclose(file);
 
 		/*
 		 * Some HP firmware is broken and has an undefined 'present voltage'
@@ -870,7 +870,7 @@ static int power_rate_get_proc_acpi(
 		total_watts    += watts_rate + voltage * amps_rate;
 		total_capacity += watts_left + voltage * amps_left;
 	}
-	closedir(dir);
+	(void)closedir(dir);
 
 	if (! *discharging) {
 		printf("Machine is indicating it is not discharging and hence "
@@ -978,7 +978,7 @@ static int proc_cmdline(
 	snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
 	if ((fp = fopen(path, "r")) != NULL) {
 		n = fread(cmdline, size, 1, fp);
-		fclose(fp);
+		(void)fclose(fp);
 	}
 	return n;
 }
@@ -1098,7 +1098,7 @@ static int proc_info_load(void)
 			proc_info_add(atoi(dirent->d_name));
 	}
 
-	closedir(dir);
+	(void)closedir(dir);
 	return 0;
 }
 
@@ -1142,7 +1142,7 @@ static int monitor(const int sock)
 		struct timeval tv;
 		char __attribute__ ((aligned(NLMSG_ALIGNTO)))buf[4096];
 
-		gettimeofday(&t2, NULL);
+		(void)gettimeofday(&t2, NULL);
 		usec = ((t1.tv_sec + sample_delay - t2.tv_sec) * 1000000) + (t1.tv_usec - t2.tv_usec);
 		if (usec < 0)
 			goto sample_now;
@@ -1187,7 +1187,7 @@ sample_now:
 			}
 
 			time_now(tmbuffer, sizeof(tmbuffer));
-			gettimeofday(&t1, NULL);
+			(void)gettimeofday(&t1, NULL);
 			stats_read(&s2);
 
 			/*
