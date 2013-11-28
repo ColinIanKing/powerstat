@@ -1342,7 +1342,7 @@ sample_now:
 void show_help(char *const argv[])
 {
 	printf("%s, version %s\n\n", APP_NAME, VERSION);
-	printf("usage: %s [-b] [-d secs] [-h] [-i idle] [-p] [-r] [-s] [-z] [delay [count]]\n", argv[0]);
+	printf("usage: %s [-d secs] [-i idle] [-b|-h|-p|-r|-s|-z] [delay [count]]\n", argv[0]);
 	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
 	printf("\t-d specify delay before starting, default is %d seconds\n", start_delay);
 	printf("\t-h show help\n");
