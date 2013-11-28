@@ -126,7 +126,7 @@ static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
 static int max_readings;			/* number of samples to gather */
 static int sample_delay   = SAMPLE_DELAY;	/* time between each sample in secs */
 static int start_delay    = START_DELAY;	/* seconds before we start displaying stats */
-static int idle_threshold = IDLE_THRESHOLD;	/* lower than this and the CPU is busy */
+static double idle_threshold = IDLE_THRESHOLD;	/* lower than this and the CPU is busy */
 static log_t infolog;				/* log */
 static int opts;				/* opt arg opt flags */
 static volatile int stop_recv;			/* sighandler stop flag */
@@ -1202,7 +1202,7 @@ sample_now:
 			}
 
 			if ((opts & OPTS_REDO_WHEN_NOT_IDLE) &&
-			    (stats[readings].value[CPU_IDLE] < (double)idle_threshold)) {
+			    (stats[readings].value[CPU_IDLE] < idle_threshold)) {
 				stats_clear(&stats[readings]);
 				stats_read(&s1);
 				gettimeofday(&t1, NULL);
@@ -1388,9 +1388,9 @@ int main(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 		case 'i':
 			opts |= OPTS_REDO_WHEN_NOT_IDLE;
-			idle_threshold = atoi(optarg);
-			if ((idle_threshold < 0) || (idle_threshold > 99)) {
-				fprintf(stderr, "Idle threshold must be between 0..99\n");
+			idle_threshold = atof(optarg);
+			if ((idle_threshold < 0.0) || (idle_threshold > 99.99)) {
+				fprintf(stderr, "Idle threshold must be between 0..99.99\n");
 				exit(EXIT_FAILURE);
 			}
 			break;
