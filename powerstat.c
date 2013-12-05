@@ -594,6 +594,64 @@ static void stats_average_stddev_min_max(
 	}
 }
 
+/*
+ *  Battery is less helpful, we need to figure the power rate by looking
+ *  back in time, measuring capacity drop and figuring out the rate from
+ *  this.  We keep track of the rate over a sliding window of ROLLING_AVERAGE
+ *  seconds.
+ */
+static void calc_rolling_average(
+	double total_capacity,
+	double *const rate,
+	bool *const inaccurate)
+{
+	static int index = 0;
+	time_t time_now, dt;
+	static measurement_t measurements[MAX_MEASUREMENTS];
+	int i, j;
+
+	/*
+	 *  Battery is less helpful, we need to figure the power rate by looking
+	 *  back in time, measuring capacity drop and figuring out the rate from
+	 *  this.  We keep track of the rate over a sliding window of ROLLING_AVERAGE
+	 *  seconds.
+	 */
+	time_now = time(NULL);
+	measurements[index].value = total_capacity;
+	measurements[index].when  = time_now;
+	index = (index + 1) % MAX_MEASUREMENTS;
+	*rate = 0.0;
+
+	/*
+	 * Scan back in time for a sample that's > ROLLING_AVERAGE seconds away
+	 * and calculate power consumption based on this value and interval
+	 */
+	for (j = index, i = 0; i < MAX_MEASUREMENTS; i++) {
+		j--;
+		if (j < 0)
+			j += MAX_MEASUREMENTS;
+
+		if (measurements[j].when) {
+			double dw = measurements[j].value - total_capacity;
+			dt = time_now - measurements[j].when;
+			*rate = 3600.0 * dw / dt;
+
+			if (time_now - measurements[j].when > ROLLING_AVERAGE) {
+				*inaccurate = false;
+				break;
+			}
+		}
+	}
+
+	/*
+	 *  We either have found a good measurement, or an estimate at this point, but
+	 *  is it valid?
+	 */
+	if (*rate < 0.0) {
+		*rate = 0.0;
+		*inaccurate = true;
+	}
+}
 
 
 /*
@@ -607,14 +665,9 @@ static int power_rate_get_sys_fs(
 {
 	DIR *dir;
 	struct dirent *dirent;
-	time_t time_now, dt;
 
-	static measurement_t measurements[MAX_MEASUREMENTS];
-	static int index = 0;
-	int i, j;
 	double total_watts = 0.0;
 	double total_capacity = 0.0;
-	double dw;
 
 	*rate = 0.0;
 	*discharging = false;
@@ -717,48 +770,8 @@ static int power_rate_get_sys_fs(
 		return 0;
 	}
 
-	/*
-	 *  Battery is less helpful, we need to figure the power rate by looking
-	 *  back in time, measuring capacity drop and figuring out the rate from
-	 *  this.  We keep track of the rate over a sliding window of ROLLING_AVERAGE
-	 *  seconds.
-	 */
-	time_now = time(NULL);
-
-	measurements[index].value = total_capacity;
-	measurements[index].when  = time_now;
-	index = (index + 1) % MAX_MEASUREMENTS;
-
-	/*
-	 * Scan back in time for a sample that's > ROLLING_AVERAGE seconds away
-	 * and calculate power consumption based on this value and interval
-	 */
-	for (j = index, i = 0; i < MAX_MEASUREMENTS; i++) {
-		j--;
-		if (j < 0)
-			j += MAX_MEASUREMENTS;
-
-		if (measurements[j].when) {
-			dw = measurements[j].value - total_capacity;
-			dt = time_now - measurements[j].when;
-			*rate = 3600.0 * dw / dt;
-
-			if (time_now - measurements[j].when > ROLLING_AVERAGE) {
-				*inaccurate = false;
-				break;
-			}
-		}
-	}
-
-	/*
-	 *  We either have found a good measurement, or an estimate at this point, but
-	 *  is it valid?
-	 */
-	if (*rate < 0.0) {
-		*rate = 0.0;
-		*inaccurate = true;
-	}
-
+	/*  Rate not known, so calculate it from historical data, sigh */
+	calc_rolling_average(total_capacity, rate, inaccurate);
 	return 0;
 }
 
@@ -775,14 +788,9 @@ static int power_rate_get_proc_acpi(
 	FILE *file;
 	struct dirent *dirent;
 	char filename[PATH_MAX];
-	time_t time_now, dt;
 
-	static measurement_t measurements[MAX_MEASUREMENTS];
-	static int index = 0;
-	int i, j;
 	double total_watts = 0.0;
 	double total_capacity = 0.0;
-	double dw;
 
 	*rate = 0.0;
 	*discharging = false;
@@ -889,47 +897,8 @@ static int power_rate_get_proc_acpi(
 		return 0;
 	}
 
-	/*
-	 *  Battery is less helpful, we need to figure the power rate by looking
-	 *  back in time, measuring capacity drop and figuring out the rate from
-	 *  this.  We keep track of the rate over a sliding window of ROLLING_AVERAGE
-	 *  seconds.
-	 */
-	time_now = time(NULL);
-
-	measurements[index].value = total_capacity;
-	measurements[index].when  = time_now;
-	index = (index + 1) % MAX_MEASUREMENTS;
-
-	/*
-	 * Scan back in time for a sample that's > ROLLING_AVERAGE seconds away
-	 * and calculate power consumption based on this value and interval
-	 */
-	for (j = index, i = 0; i < MAX_MEASUREMENTS; i++) {
-		j--;
-		if (j < 0)
-			j += MAX_MEASUREMENTS;
-
-		if (measurements[j].when) {
-			dw = measurements[j].value - total_capacity;
-			dt = time_now - measurements[j].when;
-			*rate = 3600.0 * dw / dt;
-
-			if (time_now - measurements[j].when > ROLLING_AVERAGE) {
-				*inaccurate = false;
-				break;
-			}
-		}
-	}
-
-	/*
-	 *  We either have found a good measurement, or an estimate at this point, but
-	 *  is it valid?
-	 */
-	if (*rate < 0.0) {
-		*rate = 0.0;
-		*inaccurate = true;
-	}
+	/*  Rate not known, so calculate it from historical data, sigh */
+	calc_rolling_average(total_capacity, rate, inaccurate);
 	return 0;
 }
 
