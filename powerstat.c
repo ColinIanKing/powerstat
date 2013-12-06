@@ -82,8 +82,8 @@
 				 OPTS_REDO_NETLINK_BUSY |  \
 				 OPTS_ROOT_PRIV)
 
-#define SYS_CLASS_POWER_SUPPLY	"/sys/class/power_supply"
-#define PROC_ACPI_BATTERY	"/proc/acpi/battery"
+#define SYS_CLASS_POWER_SUPPLY		"/sys/class/power_supply"
+#define PROC_ACPI_BATTERY		"/proc/acpi/battery"
 
 #define SYS_FIELD_VOLTAGE		"POWER_SUPPLY_VOLTAGE_NOW="
 #define SYS_FIELD_WATTS_RATE		"POWER_SUPPLY_POWER_NOW="
@@ -94,8 +94,8 @@
 
 /* Measurement entry */
 typedef struct {
-	double	value;
-	time_t	when;
+	double	value;	/* Measurment value */
+	time_t	when;	/* When it was measured */
 } measurement_t;
 
 /* Statistics entry */
@@ -132,7 +132,11 @@ static int opts;				/* opt arg opt flags */
 static volatile int stop_recv;			/* sighandler stop flag */
 
 
-char *file_get(const char *const file)
+/*
+ *  file_get()
+ *	read a line from a /sys file
+ */
+static char *file_get(const char *const file)
 {
 	FILE *fp;
 	char buffer[4096];
@@ -190,7 +194,7 @@ static void time_now(char *const buffer, const size_t buflen)
  *  log_init()
  *	Initialise log head
  */
-static void log_init(void)
+static inline void log_init(void)
 {
 	infolog.head = NULL;
 	infolog.tail = NULL;
@@ -430,7 +434,10 @@ static bool stats_gather(
 	total = res->value[CPU_USER] + res->value[CPU_NICE] +
 		res->value[CPU_SYS] + res->value[CPU_IDLE] + res->value[CPU_IOWAIT];
 
-	/*  This should not happen, but we need to avoid division by zero or weird results */
+	/*
+	 * This should not happen, but we need to avoid division
+	 * by zero or weird results
+	 */
 	if (total <= 0.0)
 		return false;
 
@@ -547,9 +554,7 @@ static void stats_average_stddev_min_max(
 	stats_t *const min,
 	stats_t *const max)
 {
-	int i;
-	int j;
-	int valid;
+	int i, j, valid;
 
 	for (j = 0; j < MAX_VALUES; j++) {
 		double total = 0.0;
@@ -595,6 +600,9 @@ static void stats_average_stddev_min_max(
 }
 
 /*
+ *  calc_rolling_average()
+ *	calculate power by using rolling average
+ *
  *  Battery is less helpful, we need to figure the power rate by looking
  *  back in time, measuring capacity drop and figuring out the rate from
  *  this.  We keep track of the rate over a sliding window of ROLLING_AVERAGE
@@ -610,12 +618,6 @@ static void calc_rolling_average(
 	static measurement_t measurements[MAX_MEASUREMENTS];
 	int i, j;
 
-	/*
-	 *  Battery is less helpful, we need to figure the power rate by looking
-	 *  back in time, measuring capacity drop and figuring out the rate from
-	 *  this.  We keep track of the rate over a sliding window of ROLLING_AVERAGE
-	 *  seconds.
-	 */
 	time_now = time(NULL);
 	measurements[index].value = total_capacity;
 	measurements[index].when  = time_now;
@@ -665,9 +667,7 @@ static int power_rate_get_sys_fs(
 {
 	DIR *dir;
 	struct dirent *dirent;
-
-	double total_watts = 0.0;
-	double total_capacity = 0.0;
+	double total_watts = 0.0, total_capacity = 0.0;
 
 	*rate = 0.0;
 	*discharging = false;
@@ -788,9 +788,7 @@ static int power_rate_get_proc_acpi(
 	FILE *file;
 	struct dirent *dirent;
 	char filename[PATH_MAX];
-
-	double total_watts = 0.0;
-	double total_capacity = 0.0;
+	double total_watts = 0.0, total_capacity = 0.0;
 
 	*rate = 0.0;
 	*discharging = false;
@@ -854,9 +852,9 @@ static int power_rate_get_proc_acpi(
 		(void)fclose(file);
 
 		/*
-		 * Some HP firmware is broken and has an undefined 'present voltage'
-		 * field and instead returns this in the design_voltage field, so
-		 * bodge around this.
+		 * Some HP firmware is broken and has an undefined 
+		 * 'present voltage' field and instead returns this in
+		 * the design_voltage field, so work around this.
 		 */
 		if (voltage == 0.0) {
 			sprintf(filename, "/proc/acpi/battery/%s/info", dirent->d_name);
@@ -887,9 +885,10 @@ static int power_rate_get_proc_acpi(
 	}
 
 	/*
- 	 *  If the battery is helpful it supplies the rate already, in which case
-	 *  we know the results from the battery are as good as we can and we don't
-	 *  have to figure out anything from capacity change over time.
+ 	 * If the battery is helpful it supplies the rate already, in which
+	 * case * we know the results from the battery are as good as we can
+	 * and we don't have to figure out anything from capacity change over
+	 * time.
 	 */
 	if (total_watts > RATE_ZERO_LIMIT) {
 		*rate = total_watts;
@@ -925,7 +924,7 @@ static int power_rate_get(
  *  proc_info_hash()
  * 	hash on PID
  */
-static int proc_info_hash(const pid_t pid)
+static inline int proc_info_hash(const pid_t pid)
 {
 	return pid % MAX_PIDS;
 }
@@ -958,8 +957,7 @@ static int proc_cmdline(
  */
 static char *proc_info_get(const pid_t pid)
 {
-	int i = proc_info_hash(pid);
-	int j;
+	int i = proc_info_hash(pid), j;
 
 	for (j = 0; j < MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
 		if ((proc_info[i] != NULL) && (proc_info[i]->pid == pid))
@@ -974,8 +972,7 @@ static char *proc_info_get(const pid_t pid)
  */
 static void proc_info_free(const pid_t pid)
 {
-	int i = proc_info_hash(pid);
-	int j;
+	int i = proc_info_hash(pid), j;
 
 	for (j = 0; j < MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
 		if ((proc_info[i] != NULL) && (proc_info[i]->pid == pid)) {
@@ -1044,7 +1041,6 @@ static int proc_info_add(const pid_t pid)
 		return -1;
 	}
 	strcpy(info->cmdline, cmdline);
-
 	proc_info[i] = info;
 
 	return -1;
@@ -1078,14 +1074,10 @@ static int proc_info_load(void)
 static int monitor(const int sock)
 {
 	ssize_t len;
+	int readings = 0, redone = 0, row = 0;
+	stats_t *stats, s1, s2, average, stddev, min, max;
 	struct nlmsghdr *nlmsghdr;
 	struct timeval t1, t2;
-	stats_t *stats;
-	stats_t s1, s2;
-	stats_t average, stddev, min, max;
-	int readings = 0;
-	int redone = 0;
-	int row = 0;
 
 	if ((stats = calloc(max_readings, sizeof(stats_t))) == NULL) {
 		fprintf(stderr, "Cannot allocate statistics table.\n");
@@ -1299,7 +1291,6 @@ sample_now:
 		average.value[POWER_RATE], stddev.value[POWER_RATE]);
 
 	free(stats);
-
 	return 0;
 }
 
@@ -1326,13 +1317,9 @@ void show_help(char *const argv[])
 
 int main(int argc, char * const argv[])
 {
-    	int sock = -1;
 	double dummy_rate;
-	bool discharging;
-	bool dummy_inaccurate;
-	int ret = EXIT_FAILURE;
-	int i;
-	int run_duration;
+	int sock = -1, ret = EXIT_FAILURE, i, run_duration;
+	bool discharging, dummy_inaccurate;
 
     	signal(SIGINT, &handle_sigint);
     	siginterrupt(SIGINT, 1);
