@@ -1,3 +1,12 @@
+powerstat (0.01.27-1) unstable; urgency=low
+
+  * Makefile: bump version
+  * Update copyright date
+  * Some minor code clean ups, no functional change
+  * factor out rolling average calculation
+
+ -- Colin King <colin.king@canonical.com>  Tue, 7 January 2014 16:26:00 +0000
+
 powerstat (0.01.26-1) unstable; urgency=low
 
   * Makefile: bump version
