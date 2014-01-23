@@ -3,7 +3,7 @@ Section: admin
 Priority: optional
 Maintainer: Colin King <colin.king@canonical.com>
 Uploaders: Kamal Mostafa <kamal@whence.com>
-Standards-Version: 3.9.4
+Standards-Version: 3.9.5
 Build-Depends: debhelper (>= 7)
 Homepage: http://kernel.ubuntu.com/~cking/powerstat
 
