@@ -47,8 +47,9 @@
 #define APP_NAME		"powerstat"
 #define MIN_RUN_DURATION	(5*60)		/* We recommend a run of 5 minutes */
 #define SAMPLE_DELAY		(10)		/* Delay between samples in seconds */
-#define ROLLING_AVERAGE		(120)		/* 2 minute rolling average for power usage calculation */
-#define MAX_MEASUREMENTS 	(ROLLING_AVERAGE+10)
+#define ROLLING_AVERAGE_SECS	(120)		/* 2 minute rolling average for power usage calculation */
+#define STANDARD_AVERAGE_SECS	(120)
+#define MAX_MEASUREMENTS 	(ROLLING_AVERAGE_SECS + 10)
 #define START_DELAY		(3*60)		/* Delay to wait before sampling */
 #define MAX_PIDS		(32769)		/* Hash Max PIDs */
 #define	RATE_ZERO_LIMIT		(0.001)		/* Less than this we call the power rate zero */
@@ -77,6 +78,7 @@
 #define OPTS_REDO_WHEN_NOT_IDLE	(0x0004)	/* when idle below idle_threshold */
 #define OPTS_ZERO_RATE_ALLOW	(0x0008)	/* force allow zero rates */
 #define OPTS_ROOT_PRIV		(0x0010)	/* has root privilege */
+#define OPTS_STANDARD_AVERAGE	(0x0020)	/* calc standard average */
 
 #define OPTS_USE_NETLINK	(OPTS_SHOW_PROC_ACTIVITY | \
 				 OPTS_REDO_NETLINK_BUSY |  \
@@ -130,6 +132,7 @@ static double idle_threshold = IDLE_THRESHOLD;	/* lower than this and the CPU is
 static log_t infolog;				/* log */
 static int opts;				/* opt arg opt flags */
 static volatile int stop_recv;			/* sighandler stop flag */
+static bool power_calc_from_capacity = false;	/* true of power is calculated via capacity change */
 
 
 /*
@@ -600,13 +603,54 @@ static void stats_average_stddev_min_max(
 }
 
 /*
+ *  calc_standard_average()
+ *	calculate a standard average based on first sample
+ *	and the current sample
+ */
+static void calc_standard_average(
+	double total_capacity,
+	double *const rate,
+	bool *const inaccurate)
+{
+	static time_t time_start = 0;
+	static double total_capacity_start = 0.0;
+	static bool first = true;
+	time_t time_now, dt;
+	double dw;
+
+	time_now = time(NULL);
+
+	if (first) {
+		time_start = time_now;
+		total_capacity_start = total_capacity;
+		first = false;
+		*rate = 0.0;
+		*inaccurate = true;
+		return;
+	}
+
+	dt = time_now - time_start;
+	dw = total_capacity_start - total_capacity;
+	if (dt <= 0 || dw <= 0.0) {
+		/* Something is wrong, can't be a good sample */
+		*rate = 0.0;
+		*inaccurate = true;
+		return;
+	}
+
+	*rate = 3600.0 * dw / dt;
+	/* Only after a fairly long duration can we be sure it is reasonable */
+	*inaccurate = dt < STANDARD_AVERAGE_SECS;
+}
+
+/*
  *  calc_rolling_average()
  *	calculate power by using rolling average
  *
  *  Battery is less helpful, we need to figure the power rate by looking
  *  back in time, measuring capacity drop and figuring out the rate from
- *  this.  We keep track of the rate over a sliding window of ROLLING_AVERAGE
- *  seconds.
+ *  this.  We keep track of the rate over a sliding window of
+ *  ROLLING_AVERAGE_SECS seconds.
  */
 static void calc_rolling_average(
 	double total_capacity,
@@ -625,8 +669,9 @@ static void calc_rolling_average(
 	*rate = 0.0;
 
 	/*
-	 * Scan back in time for a sample that's > ROLLING_AVERAGE seconds away
-	 * and calculate power consumption based on this value and interval
+	 * Scan back in time for a sample that's > ROLLING_AVERAGE_SECS
+	 * seconds away and calculate power consumption based on this
+	 * value and interval
 	 */
 	for (j = index, i = 0; i < MAX_MEASUREMENTS; i++) {
 		j--;
@@ -638,7 +683,7 @@ static void calc_rolling_average(
 			dt = time_now - measurements[j].when;
 			*rate = 3600.0 * dw / dt;
 
-			if (time_now - measurements[j].when > ROLLING_AVERAGE) {
+			if (time_now - measurements[j].when > ROLLING_AVERAGE_SECS) {
 				*inaccurate = false;
 				break;
 			}
@@ -655,6 +700,19 @@ static void calc_rolling_average(
 	}
 }
 
+
+static void calc_from_capacity(
+	double total_capacity,
+	double *const rate,
+	bool *const inaccurate)
+{
+	power_calc_from_capacity = true;
+
+	if (opts & OPTS_STANDARD_AVERAGE)
+		calc_standard_average(total_capacity, rate, inaccurate);
+	else
+		calc_rolling_average(total_capacity, rate, inaccurate);
+}
 
 /*
  *  power_rate_get_sys_fs()
@@ -769,7 +827,7 @@ static int power_rate_get_sys_fs(
 	}
 
 	/*  Rate not known, so calculate it from historical data, sigh */
-	calc_rolling_average(total_capacity, rate, inaccurate);
+	calc_from_capacity(total_capacity, rate, inaccurate);
 	return 0;
 }
 
@@ -895,7 +953,7 @@ static int power_rate_get_proc_acpi(
 	}
 
 	/*  Rate not known, so calculate it from historical data, sigh */
-	calc_rolling_average(total_capacity, rate, inaccurate);
+	calc_from_capacity(total_capacity, rate, inaccurate);
 	return 0;
 }
 
@@ -1288,6 +1346,13 @@ sample_now:
 	printf("%6.2f Watts on Average with Standard Deviation %-6.2f\n",
 		average.value[POWER_RATE], stddev.value[POWER_RATE]);
 
+	if (power_calc_from_capacity) {
+		printf("Note: Power calculated from battery capacity drain, may not be accurate.\n");
+	} else {
+		if (opts & OPTS_STANDARD_AVERAGE)
+			printf("Note: The battery supplied suitable power data, -S option not required.\n");
+	}
+
 	free(stats);
 	return 0;
 }
@@ -1308,6 +1373,7 @@ void show_help(char *const argv[])
 	printf("\t-p redo a sample if we see process fork/exec/exit activity\n");
 	printf("\t-r redo a sample if busy and we see process activity (same as -b -p)\n");
 	printf("\t-s show process fork/exec/exit activity log\n");
+	printf("\t-S calculate power from capacity drain using standard average\n");
 	printf("\t-z forcibly ignore zero power rate stats from the battery\n");
 	printf("\tdelay: delay between each sample, default is %d seconds\n", SAMPLE_DELAY);
 	printf("\tcount: number of samples to take\n");
@@ -1323,7 +1389,7 @@ int main(int argc, char * const argv[])
     	siginterrupt(SIGINT, 1);
 
 	for (;;) {
-		int c = getopt(argc, argv, "bd:hi:prsz");
+		int c = getopt(argc, argv, "bd:hi:prszS");
 		if (c == -1)
 			break;
 		switch (c) {
@@ -1356,6 +1422,9 @@ int main(int argc, char * const argv[])
 			break;
 		case 's':
 			opts |= OPTS_SHOW_PROC_ACTIVITY;
+			break;
+		case 'S':
+			opts |= OPTS_STANDARD_AVERAGE;
 			break;
 		case 'z':
 			opts |= OPTS_ZERO_RATE_ALLOW;
