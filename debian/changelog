@@ -1,3 +1,14 @@
+powerstat (0.01.28-1) unstable; urgency=low
+
+  * Makefile: bump version
+  * debain/control: update standards version
+  * Re-work battery not connected failure message
+  * Add -S option to compute standard average on capacity values
+  * Fix comment
+  * Move some variables to a lower scope
+
+ -- Colin King <colin.king@canonical.com>  Thu, 23 January 2014 16:54:04 +0000
+
 powerstat (0.01.27-1) unstable; urgency=low
 
   * Makefile: bump version
