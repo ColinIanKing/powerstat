@@ -686,14 +686,6 @@ static int power_rate_get_sys_fs(
 			int  val;
 			FILE *fp;
 
-			double voltage = 0.0;
-
-			double amps_rate = 0.0;
-			double amps_left = 0.0;
-
-			double watts_rate = 0.0;
-			double watts_left = 0.0;
-
 			/* Check that type field matches the expected type */
 			snprintf(path, sizeof(path), "%s/%s/type", SYS_CLASS_POWER_SUPPLY, dirent->d_name);
 			if ((data = file_get(path)) != NULL) {
@@ -711,6 +703,12 @@ static int power_rate_get_sys_fs(
 				return -1;
 			} else {
 				char buffer[4096];
+				double voltage = 0.0;
+				double amps_rate = 0.0;
+				double amps_left = 0.0;
+				double watts_rate = 0.0;
+				double watts_left = 0.0;
+
 				while (fgets(buffer, sizeof(buffer)-1, fp) != NULL) {
 					if (strstr(buffer, SYS_FIELD_STATUS_DISCHARGING))
 						*discharging = true;
