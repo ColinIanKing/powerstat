@@ -884,7 +884,7 @@ static int power_rate_get_proc_acpi(
 
 	/*
  	 * If the battery is helpful it supplies the rate already, in which
-	 * case * we know the results from the battery are as good as we can
+	 * case we know the results from the battery are as good as we can
 	 * and we don't have to figure out anything from capacity change over
 	 * time.
 	 */
