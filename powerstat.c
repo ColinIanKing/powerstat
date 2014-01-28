@@ -384,7 +384,7 @@ static int stats_read(stats_t *const info)
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		if (strncmp(buf, "cpu ", 4) == 0)
-			sscanf(buf, "%*s %lf %lf %lf %lf %lf %lf %lf",
+			sscanf(buf, "%*s %15lf %15lf %15lf %15lf %15lf %15lf %15lf",
 				&(info->value[CPU_USER]),
 				&(info->value[CPU_NICE]),
 				&(info->value[CPU_SYS]),
@@ -393,13 +393,13 @@ static int stats_read(stats_t *const info)
 				&(info->value[CPU_IRQ]),
 				&(info->value[CPU_SOFTIRQ]));
 		if (strncmp(buf, "ctxt ", 5) == 0)
-			sscanf(buf, "%*s %lf", &(info->value[CPU_CTXT]));
+			sscanf(buf, "%*s %15lf", &(info->value[CPU_CTXT]));
 		if (strncmp(buf, "intr ", 5) == 0)
-			sscanf(buf, "%*s %lf", &(info->value[CPU_INTR]));
+			sscanf(buf, "%*s %15lf", &(info->value[CPU_INTR]));
 		if (strncmp(buf, "procs_running ", 14) == 0)
-			sscanf(buf, "%*s %lf", &(info->value[CPU_PROCS_RUN]));
+			sscanf(buf, "%*s %15lf", &(info->value[CPU_PROCS_RUN]));
 		if (strncmp(buf, "procs_blocked ", 14) == 0)
-			sscanf(buf, "%*s %lf", &(info->value[CPU_PROCS_BLK]));
+			sscanf(buf, "%*s %15lf", &(info->value[CPU_PROCS_BLK]));
 	}
 	(void)fclose(fp);
 
@@ -773,31 +773,31 @@ static int power_rate_get_sys_fs(
 
 					if (strstr(buffer, SYS_FIELD_AMPS_LEFT) &&
 					    strlen(buffer) > sizeof(SYS_FIELD_AMPS_LEFT) - 1) {
-						sscanf(buffer + sizeof(SYS_FIELD_AMPS_LEFT) - 1, "%d", &val);
+						sscanf(buffer + sizeof(SYS_FIELD_AMPS_LEFT) - 1, "%12d", &val);
 						amps_left = (double)val / 1000000.0;
 					}
 
 					if (strstr(buffer, SYS_FIELD_WATTS_LEFT) &&
 					    strlen(buffer) > sizeof(SYS_FIELD_WATTS_LEFT) - 1) {
-						sscanf(buffer + sizeof(SYS_FIELD_WATTS_LEFT) - 1, "%d", &val);
+						sscanf(buffer + sizeof(SYS_FIELD_WATTS_LEFT) - 1, "%12d", &val);
 						watts_left = (double)val / 1000000.0;
 					}
 
 					if (strstr(buffer, SYS_FIELD_AMPS_RATE) &&
 					    strlen(buffer) > sizeof(SYS_FIELD_AMPS_RATE) - 1) {
-						sscanf(buffer + sizeof(SYS_FIELD_AMPS_RATE) - 1, "%d", &val);
+						sscanf(buffer + sizeof(SYS_FIELD_AMPS_RATE) - 1, "%12d", &val);
 						amps_rate = (double)val / 1000000.0;
 					}
 
 					if (strstr(buffer, SYS_FIELD_WATTS_RATE) &&
 					    strlen(buffer) > sizeof(SYS_FIELD_WATTS_RATE) - 1) {
-						sscanf(buffer + sizeof(SYS_FIELD_WATTS_RATE) - 1, "%d", &val);
+						sscanf(buffer + sizeof(SYS_FIELD_WATTS_RATE) - 1, "%12d", &val);
 						watts_rate = (double)val / 1000000.0;
 					}
 
 					if (strstr(buffer, SYS_FIELD_VOLTAGE) &&
 					    strlen(buffer) > sizeof(SYS_FIELD_VOLTAGE) - 1) {
-						sscanf(buffer + sizeof(SYS_FIELD_VOLTAGE) - 1, "%d", &val);
+						sscanf(buffer + sizeof(SYS_FIELD_VOLTAGE) - 1, "%12d", &val);
 						voltage = (double)val / 1000000.0;
 					}
 				}
