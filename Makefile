@@ -12,8 +12,11 @@ powerstat.8.gz: powerstat.8
 	gzip -c $< > $@
 
 dist:
-	git archive --format=tar --prefix="powerstat-$(VERSION)/" V$(VERSION) | \
-		gzip > powerstat-$(VERSION).tar.gz
+	rm -rf powerstat-$(VERSION)
+	mkdir powerstat-$(VERSION)
+	cp -rp Makefile powerstat.c powerstat.8 COPYING powerstat-$(VERSION)
+	tar -zcf powerstat-$(VERSION).tar.gz powerstat-$(VERSION)
+	rm -rf powerstat-$(VERSION)
 
 clean:
 	rm -f powerstat powerstat.o powerstat.8.gz
