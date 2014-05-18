@@ -125,9 +125,9 @@ typedef struct {
 } log_t;
 
 static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
-static int max_readings;			/* number of samples to gather */
-static int sample_delay   = SAMPLE_DELAY;	/* time between each sample in secs */
-static int start_delay    = START_DELAY;	/* seconds before we start displaying stats */
+static long int max_readings;			/* number of samples to gather */
+static long int sample_delay   = SAMPLE_DELAY;	/* time between each sample in secs */
+static long int start_delay = START_DELAY;	/* seconds before we start displaying stats */
 static double idle_threshold = IDLE_THRESHOLD;	/* lower than this and the CPU is busy */
 static log_t infolog;				/* log */
 static int opts;				/* opt arg opt flags */
@@ -362,7 +362,7 @@ static void stats_clear(stats_t *const stats)
  *  stats_clear_all()
  *	zero stats data
  */
-static void stats_clear_all(stats_t *const stats, const int n)
+static void stats_clear_all(stats_t *const stats, const long int n)
 {
 	int i;
 
@@ -1115,8 +1115,12 @@ static int proc_info_load(void)
 		return -1;
 
 	while ((dirent = readdir(dir))) {
-		if (isdigit(dirent->d_name[0]))
-			proc_info_add(atoi(dirent->d_name));
+		if (isdigit(dirent->d_name[0])) {
+			errno = 0;
+			pid_t pid = (pid_t)strtol(dirent->d_name, NULL, 10);
+			if (!errno)
+				proc_info_add(pid);
+		}
 	}
 
 	(void)closedir(dir);
@@ -1130,12 +1134,13 @@ static int proc_info_load(void)
 static int monitor(const int sock)
 {
 	ssize_t len;
-	int readings = 0, redone = 0, row = 0;
+	int redone = 0, row = 0;
+	long int readings = 0;
 	stats_t *stats, s1, s2, average, stddev, min, max;
 	struct nlmsghdr *nlmsghdr;
 	struct timeval t1, t2;
 
-	if ((stats = calloc(max_readings, sizeof(stats_t))) == NULL) {
+	if ((stats = calloc((size_t)max_readings, sizeof(stats_t))) == NULL) {
 		fprintf(stderr, "Cannot allocate statistics table.\n");
 		return -1;
 	}
@@ -1367,7 +1372,7 @@ void show_help(char *const argv[])
 	printf("%s, version %s\n\n", APP_NAME, VERSION);
 	printf("usage: %s [-d secs] [-i idle] [-b|-h|-p|-r|-s|-z] [delay [count]]\n", argv[0]);
 	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
-	printf("\t-d specify delay before starting, default is %d seconds\n", start_delay);
+	printf("\t-d specify delay before starting, default is %ld seconds\n", start_delay);
 	printf("\t-h show help\n");
 	printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
 	printf("\t-p redo a sample if we see process fork/exec/exit activity\n");
@@ -1382,7 +1387,8 @@ void show_help(char *const argv[])
 int main(int argc, char * const argv[])
 {
 	double dummy_rate;
-	int sock = -1, ret = EXIT_FAILURE, i, run_duration;
+	int sock = -1, ret = EXIT_FAILURE, i;
+	long int run_duration;
 	bool discharging, dummy_inaccurate;
 
     	signal(SIGINT, &handle_sigint);
@@ -1397,7 +1403,12 @@ int main(int argc, char * const argv[])
 			opts |= OPTS_REDO_WHEN_NOT_IDLE;
 			break;
 		case 'd':
-			start_delay = atoi(optarg);
+			errno = 0;
+			start_delay = strtol(optarg, NULL, 10);
+			if (errno) {
+				fprintf(stderr, "Invalid value for start delay\n");
+				exit(EXIT_FAILURE);
+			}
 			if (start_delay < 0) {
 				fprintf(stderr, "Start delay must be 0 or more seconds\n");
 				exit(EXIT_FAILURE);
@@ -1433,21 +1444,31 @@ int main(int argc, char * const argv[])
 	}
 
 	if (optind < argc) {
-		sample_delay = atoi(argv[optind++]);
+		errno = 0;
+		sample_delay = strtol(argv[optind++], NULL, 10);
+		if (errno) {
+			fprintf(stderr, "Invalid value for start delay\n");
+			exit(EXIT_FAILURE);
+		}
 		if (sample_delay < 1) {
 			fprintf(stderr, "Sample delay must be >= 1\n");
-			exit(ret);
+			exit(EXIT_FAILURE);
 		}
 	}
 
 	run_duration = MIN_RUN_DURATION + START_DELAY - start_delay;
 
 	if (optind < argc) {
-		max_readings = atoi(argv[optind++]);
+		errno = 0;
+		max_readings = strtol(argv[optind++], NULL, 10);
+		if (errno) {
+			fprintf(stderr, "Invalid value for maximum readings\n");
+			exit(EXIT_FAILURE);
+		}
 		if ((max_readings * sample_delay) < run_duration) {
-			fprintf(stderr, "Number of readings should be at least %d\n",
+			fprintf(stderr, "Number of readings should be at least %ld\n",
 				run_duration / sample_delay);
-			exit(ret);
+			exit(EXIT_FAILURE);
 		}
 	} else {
 		max_readings = run_duration / sample_delay;
@@ -1462,16 +1483,16 @@ int main(int argc, char * const argv[])
 
 	if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
 		exit(ret);
-	printf("Running for %d seconds (%d samples at %d second intervals).\n",
+	printf("Running for %ld seconds (%ld samples at %ld second intervals).\n",
 			sample_delay * max_readings, max_readings, sample_delay);
-	printf("ACPI battery power measurements will start in %d seconds time\n",
+	printf("ACPI battery power measurements will start in %ld seconds time\n",
 		start_delay);
 	printf("\n");
 
 	if (start_delay > 0) {
 		/* Gather up initial data */
 		for (i = 0; i < start_delay; i++) {
-			printf("Waiting %d seconds before starting (gathering samples) \r", start_delay - i);
+			printf("Waiting %ld seconds before starting (gathering samples) \r", start_delay - i);
 			fflush(stdout);
 			if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
 				exit(ret);
