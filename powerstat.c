@@ -1440,6 +1440,9 @@ int main(int argc, char * const argv[])
 		case 'z':
 			opts |= OPTS_ZERO_RATE_ALLOW;
 			break;
+		default:
+			show_help(argv);
+			exit(EXIT_FAILURE);
 		}
 	}
 
