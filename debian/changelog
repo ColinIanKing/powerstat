@@ -1,3 +1,12 @@
+powerstat (0.01.31-1) unstable; urgency=low
+
+  * Makefile: bump version
+  * Handle incorrect option by dumping out help
+  * constify a few more function parameters
+  * Make max_readings, sample_delay and start_delay long ints, don't use atoi
+
+ -- Colin King <colin.king@canonical.com>  Sun, 18 May 2014 23:26:32 +0100
+
 powerstat (0.01.30-1) unstable; urgency=low
 
   * Makefile: bump version
