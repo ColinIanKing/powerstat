@@ -608,7 +608,7 @@ static void stats_average_stddev_min_max(
  *	and the current sample
  */
 static void calc_standard_average(
-	double total_capacity,
+	const double total_capacity,
 	double *const rate,
 	bool *const inaccurate)
 {
@@ -653,7 +653,7 @@ static void calc_standard_average(
  *  ROLLING_AVERAGE_SECS seconds.
  */
 static void calc_rolling_average(
-	double total_capacity,
+	const double total_capacity,
 	double *const rate,
 	bool *const inaccurate)
 {
@@ -702,7 +702,7 @@ static void calc_rolling_average(
 
 
 static void calc_from_capacity(
-	double total_capacity,
+	const double total_capacity,
 	double *const rate,
 	bool *const inaccurate)
 {
