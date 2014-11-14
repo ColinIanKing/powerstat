@@ -148,7 +148,7 @@ static char *file_get(const char *const file)
 		return NULL;
 
 	if (fgets(buffer, sizeof(buffer), fp) == NULL) {
-		fclose(fp);
+		(void)fclose(fp);
 		return NULL;
 	}
 
@@ -774,7 +774,7 @@ static int power_rate_get_sys_fs(
 				fprintf(stderr, "Battery %s present but under "
 					"supported - no state present.",
 					dirent->d_name);
-				closedir(dir);
+				(void)closedir(dir);
 				return -1;
 			} else {
 				char buffer[4096];
@@ -820,7 +820,7 @@ static int power_rate_get_sys_fs(
 				}
 				total_watts    += watts_rate + voltage * amps_rate;
 				total_capacity += watts_left + voltage * amps_left;
-				fclose(fp);
+				(void)fclose(fp);
 			}
 		}
 	} while (dirent);
@@ -944,7 +944,7 @@ static int power_rate_get_proc_acpi(
 						}
 					}
 				}
-				fclose(file);
+				(void)fclose(file);
 			}
 		}
 
@@ -1567,7 +1567,7 @@ abort:
 		log_dump();
 		log_free();
 		if (sock != -1)
-			close(sock);
+			(void)close(sock);
 	}
 
 	exit(ret);
