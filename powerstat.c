@@ -488,15 +488,15 @@ static void stats_ruler(void)
 }
 
 /*
- *
- *
+ *  row_increment()
+ *	bump row, reset if hit tty height
  */
 static void row_increment(int *const row)
 {
 	int tty_rows = tty_height();
 
 	(*row)++;
-	if ((tty_rows >2) && (*row >= tty_rows)) {
+	if ((tty_rows >2 ) && (*row >= tty_rows)) {
 		stats_headings();
 		*row = 2;
 	}
