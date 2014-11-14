@@ -225,7 +225,11 @@ static int log_printf(const char *const fmt, ...)
 		return -1;
 	}
 	len = strlen(buffer) + strlen(tmbuffer) + 1;
-	log_item->text = calloc(1, len);
+	if ((log_item->text = calloc(1, len)) == NULL) {
+		free(log_item);
+		fprintf(stderr, "Out of memory allocating log item text\n");
+		return -1;
+	}
 	snprintf(log_item->text, len, "%s%s", tmbuffer, buffer);
 
 	if (infolog.head == NULL)
