@@ -178,10 +178,10 @@ static int tty_height(void)
 }
 
 /*
- *  time_now()
+ *  get_time()
  *	Gather current time in buffer
  */
-static void time_now(char *const buffer, const size_t buflen)
+static void get_time(char *const buffer, const size_t buflen)
 {
 	struct tm tm;
 	time_t now;
@@ -216,7 +216,7 @@ static int log_printf(const char *const fmt, ...)
 	size_t len;
 
 	va_start(ap, fmt);
-	time_now(tmbuffer, sizeof(tmbuffer));
+	get_time(tmbuffer, sizeof(tmbuffer));
 	(void)vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 
@@ -1217,7 +1217,7 @@ sample_now:
 				redone = 0;
 			}
 
-			time_now(tmbuffer, sizeof(tmbuffer));
+			get_time(tmbuffer, sizeof(tmbuffer));
 			(void)gettimeofday(&t1, NULL);
 			stats_read(&s2);
 
