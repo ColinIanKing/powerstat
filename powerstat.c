@@ -1566,7 +1566,7 @@ abort:
 	if (opts & OPTS_USE_NETLINK) {
 		log_dump();
 		log_free();
-		if (sock != -1)
+		if (sock >= 0)
 			(void)close(sock);
 	}
 
