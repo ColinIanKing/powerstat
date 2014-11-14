@@ -591,7 +591,8 @@ static void stats_average_stddev_min_max(
 			total = 0.0;
 			for (i = 0; i < num; i++) {
 				if (!stats[i].inaccurate[j]) {
-					double diff = (double)stats[i].value[j] - average->value[j];
+					double diff = (double)stats[i].value[j]
+						 - average->value[j];
 					diff = diff * diff;
 					total += diff;
 				}
@@ -742,7 +743,9 @@ static int power_rate_get_sys_fs(
 	*inaccurate = true;
 
 	if ((dir = opendir(SYS_CLASS_POWER_SUPPLY)) == NULL) {
-		fprintf(stderr, "Machine does not have %s, cannot run the test.\n", SYS_CLASS_POWER_SUPPLY);
+		fprintf(stderr, "Machine does not have %s, "
+			"cannot run the test.\n",
+			SYS_CLASS_POWER_SUPPLY);
 		return -1;
 	}
 
@@ -768,7 +771,9 @@ static int power_rate_get_sys_fs(
 			(void)snprintf(path, sizeof(path), "%s/%s/uevent",
 				SYS_CLASS_POWER_SUPPLY, dirent->d_name);
 			if ((fp = fopen(path, "r")) == NULL) {
-				fprintf(stderr, "Battery %s present but under supported - no state present.", dirent->d_name);
+				fprintf(stderr, "Battery %s present but under "
+					"supported - no state present.",
+					dirent->d_name);
 				closedir(dir);
 				return -1;
 			} else {
@@ -863,7 +868,9 @@ static int power_rate_get_proc_acpi(
 	*inaccurate = true;
 
 	if ((dir = opendir(PROC_ACPI_BATTERY)) == NULL) {
-		fprintf(stderr, "Machine does not have %s, cannot run the test.\n", PROC_ACPI_BATTERY);
+		fprintf(stderr, "Machine does not have %s, "
+			"cannot run the test.\n",
+			PROC_ACPI_BATTERY);
 		return -1;
 	}
 
@@ -1177,7 +1184,8 @@ static int monitor(const int sock)
 		char __attribute__ ((aligned(NLMSG_ALIGNTO)))buf[4096];
 
 		(void)gettimeofday(&t2, NULL);
-		usec = ((t1.tv_sec + sample_delay - t2.tv_sec) * 1000000) + (t1.tv_usec - t2.tv_usec);
+		usec = ((t1.tv_sec + sample_delay - t2.tv_sec) * 1000000) +
+			(t1.tv_usec - t2.tv_usec);
 		if (usec < 0)
 			goto sample_now;
 		tv.tv_sec = usec / 1000000;
@@ -1226,7 +1234,8 @@ sample_now:
 			stats_read(&s2);
 
 			/*
-			 *  Total ticks was zero, something is broken, so re-sample
+			 *  Total ticks was zero, something is broken,
+			 *  so re-sample
 			 */
 			if (!stats_gather(&s1, &s2, &stats[readings])) {
 				stats_clear(&stats[readings]);
@@ -1279,7 +1288,10 @@ sample_now:
 				}
 			}
 
-			for (nlmsghdr = (struct nlmsghdr *)buf; NLMSG_OK (nlmsghdr, len); nlmsghdr = NLMSG_NEXT (nlmsghdr, len)) {
+			for (nlmsghdr = (struct nlmsghdr *)buf;
+				NLMSG_OK (nlmsghdr, len);
+				nlmsghdr = NLMSG_NEXT (nlmsghdr, len)) {
+
 				struct cn_msg *cn_msg;
 				struct proc_event *proc_ev;
 
@@ -1348,8 +1360,12 @@ sample_now:
         	}
 	}
 
-	/* Stats now gathered, calculate averages, stddev, min and max and display */
-	stats_average_stddev_min_max(stats, readings, &average, &stddev, &min, &max);
+	/*
+	 * Stats now gathered, calculate averages, stddev, 
+	 * min and max and display 
+	 */
+	stats_average_stddev_min_max(stats, readings, &average,
+		&stddev, &min, &max);
 	if (readings > 0) {
 		stats_ruler();
 		stats_print("Average", true, &average);
