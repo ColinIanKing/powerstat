@@ -527,8 +527,10 @@ static void stats_print(
 
 	if (opts & OPTS_USE_NETLINK) {
 		char *fmt = summary ?
-			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %s\n" :
-			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %s\n";
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f "
+			"%4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %s\n" :
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f "
+			"%4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %s\n";
 		printf(fmt,
 			prefix,
 			s->value[CPU_USER], s->value[CPU_NICE],
@@ -539,8 +541,10 @@ static void stats_print(
 			s->value[PROC_EXIT], buf);
 	} else {
 		char *fmt = summary ?
-			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.1f %6.1f %6.1f %s\n" :
-			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f %4.0f %6.0f %6.0f %s\n";
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f "
+			"%4.1f %6.1f %6.1f %s\n" :
+			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f "
+			"%4.0f %6.0f %6.0f %s\n";
 		printf(fmt,
 			prefix,
 			s->value[CPU_USER], s->value[CPU_NICE],
