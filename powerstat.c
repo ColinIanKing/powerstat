@@ -189,7 +189,7 @@ static void time_now(char *const buffer, const size_t buflen)
 	(void)time(&now);
 	(void)localtime_r(&now, &tm);
 
-	snprintf(buffer, buflen, "%2.2d:%2.2d:%2.2d ",
+	(void)snprintf(buffer, buflen, "%2.2d:%2.2d:%2.2d ",
 		tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
@@ -217,7 +217,7 @@ static int log_printf(const char *const fmt, ...)
 
 	va_start(ap, fmt);
 	time_now(tmbuffer, sizeof(tmbuffer));
-	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	(void)vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 
 	if ((log_item = calloc(1, sizeof(log_t))) == NULL) {
@@ -230,7 +230,7 @@ static int log_printf(const char *const fmt, ...)
 		fprintf(stderr, "Out of memory allocating log item text\n");
 		return -1;
 	}
-	snprintf(log_item->text, len, "%s%s", tmbuffer, buffer);
+	(void)snprintf(log_item->text, len, "%s%s", tmbuffer, buffer);
 
 	if (infolog.head == NULL)
 		infolog.head = log_item;
@@ -515,11 +515,13 @@ static void stats_print(
 
 	if (summary) {
 		if (s->inaccurate[POWER_RATE])
-			snprintf(buf, sizeof(buf), "-N/A-");
+			(void)snprintf(buf, sizeof(buf), "-N/A-");
 		else
-			snprintf(buf, sizeof(buf), "%6.2f", s->value[POWER_RATE]);
+			(void)snprintf(buf, sizeof(buf), "%6.2f",
+				s->value[POWER_RATE]);
 	} else {
-		snprintf(buf, sizeof(buf), "%6.2f%s", s->value[POWER_RATE],
+		(void)snprintf(buf, sizeof(buf), "%6.2f%s",
+			s->value[POWER_RATE],
 			s->inaccurate[POWER_RATE] ? "E" : "");
 	}
 
@@ -749,7 +751,8 @@ static int power_rate_get_sys_fs(
 			FILE *fp;
 
 			/* Check that type field matches the expected type */
-			snprintf(path, sizeof(path), "%s/%s/type", SYS_CLASS_POWER_SUPPLY, dirent->d_name);
+			(void)snprintf(path, sizeof(path), "%s/%s/type",
+				SYS_CLASS_POWER_SUPPLY, dirent->d_name);
 			if ((data = file_get(path)) != NULL) {
 				bool mismatch = (strstr(data, "Battery") == NULL);
 				free(data);
@@ -758,7 +761,8 @@ static int power_rate_get_sys_fs(
 			} else
 				continue;		/* can't check type, skip this entry */
 
-			snprintf(path, sizeof(path), "%s/%s/uevent", SYS_CLASS_POWER_SUPPLY, dirent->d_name);
+			(void)snprintf(path, sizeof(path), "%s/%s/uevent",
+				SYS_CLASS_POWER_SUPPLY, dirent->d_name);
 			if ((fp = fopen(path, "r")) == NULL) {
 				fprintf(stderr, "Battery %s present but under supported - no state present.", dirent->d_name);
 				closedir(dir);
@@ -1003,7 +1007,7 @@ static int proc_cmdline(
 	int n = 0;
 
 	*cmdline = '\0';
-	snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
+	(void)snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
 	if ((fp = fopen(path, "r")) != NULL) {
 		n = fread(cmdline, size, 1, fp);
 		(void)fclose(fp);
@@ -1092,7 +1096,7 @@ static int proc_info_add(const pid_t pid)
 	}
 	info->pid = pid;
 
-	snprintf(path, sizeof(path), "/proc/%d/cmdline", info->pid);
+	(void)snprintf(path, sizeof(path), "/proc/%d/cmdline", info->pid);
 	(void)proc_cmdline(pid, cmdline, sizeof(cmdline));
 
 	if ((info->cmdline = malloc(strlen(cmdline)+1)) == NULL) {
@@ -1201,7 +1205,8 @@ sample_now:
 			if (redone) {
 				char buffer[80];
 				int indent;
-				snprintf(buffer, sizeof(buffer), "--- Skipped samples(s) because of %s%s%s ---",
+				(void)snprintf(buffer, sizeof(buffer), 
+					"--- Skipped samples(s) because of %s%s%s ---",
 					redone & OPTS_REDO_WHEN_NOT_IDLE ? "low CPU idle" : "",
 					(redone & (OPTS_REDO_WHEN_NOT_IDLE | OPTS_REDO_NETLINK_BUSY)) ==
 					(OPTS_REDO_WHEN_NOT_IDLE | OPTS_REDO_NETLINK_BUSY) ? " and " : "",
