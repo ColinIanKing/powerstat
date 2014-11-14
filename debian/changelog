@@ -1,3 +1,18 @@
+powerstat (0.01.32-1) unstable; urgency=low
+
+  * Makefile: bump version
+  * Debian/control: update Standards-Versionb and Build-Depends
+  * Close sock fd if not in error state
+  * Ignore returns from close/fclose by explicit (void) cast
+  * Tidy up overly long lines
+  * Tidy up over long lines in stats_print()
+  * Add more comments and tidy code for row_increment
+  * Rename time_now() to get_time() to avoid time_now var clashes
+  * Tidy up snprintfs and (void) the returns
+  * Add check for log->item allocation failure
+
+ -- Colin King <colin.king@canonical.com>  Fri, 14 Nov 2014 20:02:00 +0000
+
 powerstat (0.01.31-1) unstable; urgency=low
 
   * Makefile: bump version
