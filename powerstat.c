@@ -187,7 +187,12 @@ static void get_time(char *const buffer, const size_t buflen)
 	struct tm tm;
 	time_t now;
 
-	(void)time(&now);
+	now = time(NULL);
+	if (now == ((time_t) -1)) {
+		/* Unknown time! */
+		(void)snprintf(buffer, buflen, "--:--:-- ");
+		return;
+	}
 	(void)localtime_r(&now, &tm);
 
 	(void)snprintf(buffer, buflen, "%2.2d:%2.2d:%2.2d ",
@@ -631,6 +636,11 @@ static void calc_standard_average(
 	double dw;
 
 	time_now = time(NULL);
+	if (time_now == ((time_t) -1)) {
+		*rate = 0.0;
+		*inaccurate = true;
+		return;
+	}
 
 	if (first) {
 		time_start = time_now;
@@ -675,6 +685,11 @@ static void calc_rolling_average(
 	int i, j;
 
 	time_now = time(NULL);
+	if (time_now == ((time_t) -1)) {
+		*rate = 0.0;
+		*inaccurate = true;
+		return;
+	}
 	measurements[index].value = total_capacity;
 	measurements[index].when  = time_now;
 	index = (index + 1) % MAX_MEASUREMENTS;
