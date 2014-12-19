@@ -15,6 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Author: Colin Ian King <colin.king@canonical.com>
  */
 
 #include <stdlib.h>
@@ -96,8 +97,8 @@
 
 /* Measurement entry */
 typedef struct {
-	double	value;	/* Measurment value */
-	time_t	when;	/* When it was measured */
+	double	value;		/* Measurement value */
+	time_t	when;		/* When it was measured */
 } measurement_t;
 
 /* Statistics entry */
@@ -712,6 +713,10 @@ static void calc_rolling_average(
 }
 
 
+/*
+ *  calc_from_capacity()
+ *	calculate either using standard or rolling averages
+ */
 static void calc_from_capacity(
 	const double total_capacity,
 	double *const rate,
@@ -976,6 +981,10 @@ static int power_rate_get_proc_acpi(
 	return 0;
 }
 
+/*
+ *  power_rate_get()
+ *	fetch power via which ever interface is available
+ */
 static int power_rate_get(
 	double *const rate,
 	bool *const discharging,
