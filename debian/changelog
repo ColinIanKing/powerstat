@@ -1,3 +1,16 @@
+powerstat (0.01.33-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Remove trailing . from man page title
+  * Improve signal handling, catch more signals
+  * Remove some NULL comparisons
+  * Make SANE_STATS macro a little more useful
+  * Add better error checking on gettimeofday
+  * Handle time() error returns
+  * Add some more comments
+
+ -- Colin King <colin.king@canonical.com>  Fri, 19 Dec 2014 14:32:00 +0000
+
 powerstat (0.01.32-1) unstable; urgency=low
 
   * Makefile: bump version
