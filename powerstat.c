@@ -304,7 +304,8 @@ static int netlink_connect(void)
     	if ((sock = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_CONNECTOR)) < 0) {
 		if (errno == EPROTONOSUPPORT)
 			return -EPROTONOSUPPORT;
-		fprintf(stderr, "Socket failed: %s\n", strerror(errno));
+		fprintf(stderr, "socket failed: errno=%d (%s)\n",
+			errno, strerror(errno));
 		return -1;
 	}
 
@@ -314,7 +315,8 @@ static int netlink_connect(void)
 	addr.nl_groups = CN_IDX_PROC;
 
 	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-		fprintf(stderr, "Bind failed: %s\n", strerror(errno));
+		fprintf(stderr, "Bind failed: errno=%d (%s)\n",
+			errno, strerror(errno));
 		(void)close(sock);
 		return -1;
 	}
@@ -1207,7 +1209,12 @@ static int monitor(const int sock)
 		struct timeval tv;
 		char __attribute__ ((aligned(NLMSG_ALIGNTO)))buf[4096];
 
-		(void)gettimeofday(&t2, NULL);
+		if (gettimeofday(&t2, NULL) < 0) {
+			fprintf(stderr,"gettimeofday failed: errno=%d (%s)\n",
+				errno, strerror(errno));
+			free(stats);
+			return -1;
+		}
 		usec = ((t1.tv_sec + sample_delay - t2.tv_sec) * 1000000) +
 			(t1.tv_usec - t2.tv_usec);
 		if (usec < 0)
@@ -1227,7 +1234,8 @@ static int monitor(const int sock)
 		if (ret < 0) {
 			if (errno == EINTR)
 				break;
-			fprintf(stderr,"select: %s\n", strerror(errno));
+			fprintf(stderr,"select failed: errno=%d (%s)\n",	
+				errno, strerror(errno));
 			free(stats);
 			return -1;
 		}
@@ -1254,7 +1262,12 @@ sample_now:
 			}
 
 			get_time(tmbuffer, sizeof(tmbuffer));
-			(void)gettimeofday(&t1, NULL);
+			if (gettimeofday(&t1, NULL) < 0) {
+				fprintf(stderr,"gettimeofday failed: errno=%d (%s)\n",
+					errno, strerror(errno));
+				free(stats);
+				return -1;
+			}
 			stats_read(&s2);
 
 			/*
@@ -1306,7 +1319,8 @@ sample_now:
 				if (errno == EINTR) {
 					continue;
 				} else {
-					fprintf(stderr,"recv: %s\n", strerror(errno));
+					fprintf(stderr,"recv failed: errno=%d (%s)\n",
+						errno, strerror(errno));
 					free(stats);
             				return -1;
 				}
