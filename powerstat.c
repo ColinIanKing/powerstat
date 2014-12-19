@@ -135,6 +135,70 @@ static int opts;				/* opt arg opt flags */
 static volatile int stop_recv;			/* sighandler stop flag */
 static bool power_calc_from_capacity = false;	/* true of power is calculated via capacity change */
 
+/*
+ *  Attempt to catch a range of signals so
+ *  we can clean
+ */
+static const int signals[] = {
+	/* POSIX.1-1990 */
+#ifdef SIGHUP
+	SIGHUP,
+#endif
+#ifdef SIGINT
+	SIGINT,
+#endif
+#ifdef SIGQUIT
+	SIGQUIT,
+#endif
+#ifdef SIGILL
+	SIGILL,
+#endif
+#ifdef SIGABRT
+	SIGABRT,
+#endif
+#ifdef SIGFPE
+	SIGFPE,
+#endif
+#ifdef SIGSEGV
+	SIGSEGV,
+#endif
+#ifdef SIGTERM
+	SIGTERM,
+#endif
+#ifdef SIGUSR1
+	SIGUSR1,
+#endif
+#ifdef SIGUSR2
+	SIGUSR2,
+	/* POSIX.1-2001 */
+#endif
+#ifdef SIGBUS
+	SIGBUS,
+#endif
+#ifdef SIGXCPU
+	SIGXCPU,
+#endif
+#ifdef SIGXFSZ
+	SIGXFSZ,
+#endif
+	/* Linux various */
+#ifdef SIGIOT
+	SIGIOT,
+#endif
+#ifdef SIGSTKFLT
+	SIGSTKFLT,
+#endif
+#ifdef SIGPWR
+	SIGPWR,
+#endif
+#ifdef SIGINFO
+	SIGINFO,
+#endif
+#ifdef SIGVTALRM
+	SIGVTALRM,
+#endif
+	-1,
+};
 
 /*
  *  file_get()
@@ -283,10 +347,10 @@ static void log_free(void)
 }
 
 /*
- *  handle_sigint()
- *	catch SIGINT and flag a stop
+ *  handle_sig()
+ *	catch signals and flag a stop
  */
-static void handle_sigint(int dummy)
+static void handle_sig(int dummy)
 {
 	(void)dummy;
 	stop_recv = 1;
@@ -1235,7 +1299,7 @@ static int monitor(const int sock)
 		if (ret < 0) {
 			if (errno == EINTR)
 				break;
-			fprintf(stderr,"select failed: errno=%d (%s)\n",	
+			fprintf(stderr,"select failed: errno=%d (%s)\n",
 				errno, strerror(errno));
 			free(stats);
 			return -1;
@@ -1458,9 +1522,7 @@ int main(int argc, char * const argv[])
 	int sock = -1, ret = EXIT_FAILURE, i;
 	long int run_duration;
 	bool discharging, dummy_inaccurate;
-
-    	signal(SIGINT, &handle_sigint);
-    	siginterrupt(SIGINT, 1);
+	struct sigaction new_action;
 
 	for (;;) {
 		int c = getopt(argc, argv, "bd:hi:prszS");
@@ -1574,6 +1636,21 @@ int main(int argc, char * const argv[])
 		}
 		printf("%79.79s\r", "");
 	}
+
+	memset(&new_action, 0, sizeof(new_action));
+	for (i = 0; signals[i] != -1; i++) {
+		new_action.sa_handler = handle_sig;
+		sigemptyset(&new_action.sa_mask);
+		new_action.sa_flags = 0;
+
+		if (sigaction(signals[i], &new_action, NULL) < 0) {
+			fprintf(stderr, "sigaction failed: errno=%d (%s)\n",
+				errno, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		(void)siginterrupt(signals[i], 1);
+	}
+
 
 	log_init();
 	if (opts & OPTS_USE_NETLINK) {
