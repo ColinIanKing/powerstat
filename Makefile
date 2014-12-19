@@ -1,4 +1,4 @@
-VERSION=0.01.32
+VERSION=0.01.33
 
 CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"'
 
