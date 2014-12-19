@@ -422,7 +422,9 @@ static int stats_read(stats_t *const info)
  *  On Nexus 4 we occasionally get idle time going backwards so
  *  work around this by ensuring we don't get -ve deltas.
  */
-#define SANE_STATS(s1, s2) ((s2) - (s1)) < 0.0 ? 0.0 : ((s2) - (s1))
+#define SANE_STATS(s1, s2, index)				\
+	((s2->value[index]) - (s1->value[index])) < 0.0 ? 	\
+		0.0 : ((s2->value[index]) - (s1->value[index]))
 
 /*
  *  stats_gather()
@@ -436,18 +438,19 @@ static bool stats_gather(
 {
 	double total;
 
-	res->value[CPU_USER]    = SANE_STATS(s1->value[CPU_USER]   , s2->value[CPU_USER]);
-	res->value[CPU_NICE]    = SANE_STATS(s1->value[CPU_NICE]   , s2->value[CPU_NICE]);
-	res->value[CPU_SYS]     = SANE_STATS(s1->value[CPU_SYS]    , s2->value[CPU_SYS]);
-	res->value[CPU_IDLE]    = SANE_STATS(s1->value[CPU_IDLE]   , s2->value[CPU_IDLE]);
-	res->value[CPU_IOWAIT]  = SANE_STATS(s1->value[CPU_IOWAIT] , s2->value[CPU_IOWAIT]);
-	res->value[CPU_IRQ]     = SANE_STATS(s1->value[CPU_IRQ]    , s2->value[CPU_IRQ]);
-	res->value[CPU_SOFTIRQ] = SANE_STATS(s1->value[CPU_SOFTIRQ], s2->value[CPU_SOFTIRQ]);
-	res->value[CPU_CTXT]	= SANE_STATS(s1->value[CPU_CTXT]   , s2->value[CPU_CTXT]);
-	res->value[CPU_INTR]	= SANE_STATS(s1->value[CPU_INTR]   , s2->value[CPU_INTR]);
+	res->value[CPU_USER]    = SANE_STATS(s1, s2, CPU_USER);
+	res->value[CPU_NICE]    = SANE_STATS(s1, s2, CPU_NICE);
+	res->value[CPU_SYS]     = SANE_STATS(s1, s2, CPU_SYS);
+	res->value[CPU_IDLE]    = SANE_STATS(s1, s2, CPU_IDLE);
+	res->value[CPU_IOWAIT]  = SANE_STATS(s1, s2, CPU_IOWAIT);
+	res->value[CPU_IRQ]     = SANE_STATS(s1, s2, CPU_IRQ);
+	res->value[CPU_SOFTIRQ] = SANE_STATS(s1, s2, CPU_SOFTIRQ);
+	res->value[CPU_CTXT]	= SANE_STATS(s1, s2, CPU_CTXT);
+	res->value[CPU_INTR]	= SANE_STATS(s1, s2, CPU_INTR);
 
 	total = res->value[CPU_USER] + res->value[CPU_NICE] +
-		res->value[CPU_SYS] + res->value[CPU_IDLE] + res->value[CPU_IOWAIT];
+		res->value[CPU_SYS] + res->value[CPU_IDLE] +
+		res->value[CPU_IOWAIT];
 
 	/*
 	 * This should not happen, but we need to avoid division
@@ -461,10 +464,8 @@ static bool stats_gather(
 	res->value[CPU_SYS]    = (100.0 * res->value[CPU_SYS]) / total;
 	res->value[CPU_IDLE]   = (100.0 * res->value[CPU_IDLE]) / total;
 	res->value[CPU_IOWAIT] = (100.0 * res->value[CPU_IOWAIT]) / total;
-
 	res->value[CPU_CTXT]   = res->value[CPU_CTXT] / sample_delay;
 	res->value[CPU_INTR]   = res->value[CPU_INTR] / sample_delay;
-
 	res->value[CPU_PROCS_RUN] = s2->value[CPU_PROCS_RUN];
 	res->value[CPU_PROCS_BLK] = s2->value[CPU_PROCS_BLK];
 
