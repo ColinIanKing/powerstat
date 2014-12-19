@@ -259,7 +259,7 @@ static void log_dump(void)
 	if (infolog.head != NULL)
 		printf("\nLog of fork()/exec()/exit() calls:\n");
 
-	for (log_item = infolog.head; log_item != NULL; log_item = log_item->next)
+	for (log_item = infolog.head; log_item; log_item = log_item->next)
 		printf("%s", log_item->text);
 }
 
@@ -271,7 +271,7 @@ static void log_free(void)
 {
 	log_item_t *log_item = infolog.head;
 
-	while (log_item != NULL) {
+	while (log_item) {
 		log_item_t *log_next = log_item->next;
 		free(log_item->text);
 		free(log_item);
