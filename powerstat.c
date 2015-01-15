@@ -1320,7 +1320,6 @@ static int monitor(const int sock)
 			return -1;
 		/* Timeout to wait for in the future for this sample */
 		secs = time_start + ((double)t * sample_delay) - time_now;
-		t++;
 
 		if (secs > 0.0) {
 			struct timeval tv = double_to_timeval(secs);
@@ -1405,6 +1404,7 @@ static int monitor(const int sock)
 			stats_print(tmbuffer, false, &stats[readings]);
 			readings++;
 			s1 = s2;
+			t++;
 			continue;
 		}
 
