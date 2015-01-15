@@ -1311,7 +1311,8 @@ static int monitor(const int sock)
 		bool redo = false;
 		char __attribute__ ((aligned(NLMSG_ALIGNTO)))buf[4096];
 
-		time_now = gettime_to_double();
+		if ((time_now = gettime_to_double()) < 0.0)
+			return -1;
 		/* Timeout to wait for in the future for this sample */
 		secs = time_start + ((double)t * sample_delay) - time_now;
 		t++;
