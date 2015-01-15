@@ -242,6 +242,47 @@ static int tty_height(void)
 	return 25;	/* else standard tty 80x25 */
 }
 
+
+/*
+ *  timeval_to_double
+ *	timeval to a double (in seconds)
+ */
+static inline double timeval_to_double(const struct timeval *const tv)
+{
+	return (double)tv->tv_sec + ((double)tv->tv_usec / 1000000.0);
+}
+
+
+/*
+ *  double_to_timeval
+ *	seconds in double to timeval
+ */
+static inline struct timeval double_to_timeval(const double val)
+{
+	struct timeval tv;
+
+	tv.tv_sec = val;
+	tv.tv_usec = (val - (time_t)val) * 1000000.0;
+
+	return tv;
+}
+
+/*
+ *  gettime_to_double()
+ *	get time as a double
+ */
+static double gettime_to_double(void)
+{
+	struct timeval tv;
+
+        if (gettimeofday(&tv, NULL) < 0) {
+                fprintf(stderr, "gettimeofday failed: errno=%d (%s)\n",
+                        errno, strerror(errno));
+		return -1.0;
+        }
+        return timeval_to_double(&tv);
+}
+
 /*
  *  get_time()
  *	Gather current time in buffer
@@ -1014,7 +1055,7 @@ static int power_rate_get_proc_acpi(
 		(void)fclose(file);
 
 		/*
-		 * Some HP firmware is broken and has an undefined 
+		 * Some HP firmware is broken and has an undefined
 		 * 'present voltage' field and instead returns this in
 		 * the design_voltage field, so work around this.
 		 */
@@ -1244,11 +1285,12 @@ static int proc_info_load(void)
 static int monitor(const int sock)
 {
 	ssize_t len;
+	int64_t t = 1;
 	int redone = 0, row = 0;
 	long int readings = 0;
 	stats_t *stats, s1, s2, average, stddev, min, max;
 	struct nlmsghdr *nlmsghdr;
-	struct timeval t1, t2;
+	double time_start;
 
 	if ((stats = calloc((size_t)max_readings, sizeof(stats_t))) == NULL) {
 		fprintf(stderr, "Cannot allocate statistics table.\n");
@@ -1264,45 +1306,42 @@ static int monitor(const int sock)
 	stats_headings();
 	row++;
 
-	gettimeofday(&t1, NULL);
+	if ((time_start = gettime_to_double()) < 0.0)
+		return -1;
+
 	stats_read(&s1);
 
 	while (!stop_recv && (readings < max_readings)) {
+		double time_now, secs;
+		int ret = 0;
 		bool redo = false;
-		int ret;
-		suseconds_t usec;
-		struct timeval tv;
 		char __attribute__ ((aligned(NLMSG_ALIGNTO)))buf[4096];
 
-		if (gettimeofday(&t2, NULL) < 0) {
-			fprintf(stderr,"gettimeofday failed: errno=%d (%s)\n",
-				errno, strerror(errno));
-			free(stats);
-			return -1;
-		}
-		usec = ((t1.tv_sec + sample_delay - t2.tv_sec) * 1000000) +
-			(t1.tv_usec - t2.tv_usec);
-		if (usec < 0)
-			goto sample_now;
-		tv.tv_sec = usec / 1000000;
-		tv.tv_usec = usec % 1000000;
+		time_now = gettime_to_double();
+		/* Timeout to wait for in the future for this sample */
+		secs = time_start + ((double)t * sample_delay) - time_now;
+		t++;
 
-		if (opts & OPTS_USE_NETLINK) {
-			fd_set readfds;
-			FD_ZERO(&readfds);
-			FD_SET(sock, &readfds);
-			ret = select(sock+1, &readfds, NULL, NULL, &tv);
-		} else {
-			ret = select(0, NULL, NULL, NULL, &tv);
-		}
+		if (secs > 0.0) {
+			struct timeval tv = double_to_timeval(secs);
 
-		if (ret < 0) {
-			if (errno == EINTR)
-				break;
-			fprintf(stderr,"select failed: errno=%d (%s)\n",
-				errno, strerror(errno));
-			free(stats);
-			return -1;
+			if (opts & OPTS_USE_NETLINK) {
+				fd_set readfds;
+				FD_ZERO(&readfds);
+				FD_SET(sock, &readfds);
+				ret = select(sock+1, &readfds, NULL, NULL, &tv);
+			} else {
+				ret = select(0, NULL, NULL, NULL, &tv);
+			}
+
+			if (ret < 0) {
+				if (errno == EINTR)
+					break;
+				fprintf(stderr,"select failed: errno=%d (%s)\n",
+					errno, strerror(errno));
+				free(stats);
+				return -1;
+			}
 		}
 
 		/* Time out, so measure some more samples */
@@ -1310,11 +1349,10 @@ static int monitor(const int sock)
 			char tmbuffer[10];
 			bool discharging;
 
-sample_now:
 			if (redone) {
 				char buffer[80];
 				int indent;
-				(void)snprintf(buffer, sizeof(buffer), 
+				(void)snprintf(buffer, sizeof(buffer),
 					"--- Skipped samples(s) because of %s%s%s ---",
 					redone & OPTS_REDO_WHEN_NOT_IDLE ? "low CPU idle" : "",
 					(redone & (OPTS_REDO_WHEN_NOT_IDLE | OPTS_REDO_NETLINK_BUSY)) ==
@@ -1327,12 +1365,6 @@ sample_now:
 			}
 
 			get_time(tmbuffer, sizeof(tmbuffer));
-			if (gettimeofday(&t1, NULL) < 0) {
-				fprintf(stderr,"gettimeofday failed: errno=%d (%s)\n",
-					errno, strerror(errno));
-				free(stats);
-				return -1;
-			}
 			stats_read(&s2);
 
 			/*
@@ -1342,7 +1374,6 @@ sample_now:
 			if (!stats_gather(&s1, &s2, &stats[readings])) {
 				stats_clear(&stats[readings]);
 				stats_read(&s1);
-				gettimeofday(&t1, NULL);
 				redone |= OPTS_REDO_WHEN_NOT_IDLE;
 				continue;
 			}
@@ -1351,7 +1382,6 @@ sample_now:
 			    (stats[readings].value[CPU_IDLE] < idle_threshold)) {
 				stats_clear(&stats[readings]);
 				stats_read(&s1);
-				gettimeofday(&t1, NULL);
 				redone |= OPTS_REDO_WHEN_NOT_IDLE;
 				continue;
 			}
@@ -1457,15 +1487,14 @@ sample_now:
 			if (opts & OPTS_REDO_NETLINK_BUSY && redo) {
 				stats_clear(&stats[readings]);
 				stats_read(&s1);
-				gettimeofday(&t1, NULL);
 				redone |= OPTS_REDO_NETLINK_BUSY;
 			}
         	}
 	}
 
 	/*
-	 * Stats now gathered, calculate averages, stddev, 
-	 * min and max and display 
+	 * Stats now gathered, calculate averages, stddev,
+	 * min and max and display
 	 */
 	stats_average_stddev_min_max(stats, readings, &average,
 		&stddev, &min, &max);
