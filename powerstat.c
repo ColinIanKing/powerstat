@@ -126,7 +126,7 @@ typedef struct {
 
 static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
 static long int max_readings;			/* number of samples to gather */
-static long int sample_delay   = SAMPLE_DELAY;	/* time between each sample in secs */
+static long int sample_delay = SAMPLE_DELAY;	/* time between each sample in secs */
 static long int start_delay = START_DELAY;	/* seconds before we start displaying stats */
 static double idle_threshold = IDLE_THRESHOLD;	/* lower than this and the CPU is busy */
 static log_t infolog;				/* log */
@@ -490,8 +490,11 @@ static int stats_read(stats_t *const info)
 	FILE *fp;
 	char buf[4096];
 
-	if ((fp = fopen("/proc/stat", "r")) == NULL)
+	if ((fp = fopen("/proc/stat", "r")) == NULL) {
+		fprintf(stderr, "Cannot read /proc/stat, errno=%d (%s).\n",
+			errno, strerror(errno));
 		return -1;
+	}
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		if (strncmp(buf, "cpu ", 4) == 0)
@@ -604,7 +607,7 @@ static void row_increment(int *const row)
 	int tty_rows = tty_height();
 
 	(*row)++;
-	if ((tty_rows >2 ) && (*row >= tty_rows)) {
+	if ((tty_rows > 2) && (*row >= tty_rows)) {
 		stats_headings();
 		*row = 2;
 	}
@@ -1303,7 +1306,8 @@ static int monitor(const int sock)
 	if ((time_start = gettime_to_double()) < 0.0)
 		return -1;
 
-	stats_read(&s1);
+	if (stats_read(&s1) < 0)
+		return -1;
 
 	while (!stop_recv && (readings < max_readings)) {
 		double time_now, secs;
@@ -1360,7 +1364,8 @@ static int monitor(const int sock)
 			}
 
 			get_time(tmbuffer, sizeof(tmbuffer));
-			stats_read(&s2);
+			if (stats_read(&s2) < 0)
+				return -1;
 
 			/*
 			 *  Total ticks was zero, something is broken,
@@ -1368,7 +1373,8 @@ static int monitor(const int sock)
 			 */
 			if (!stats_gather(&s1, &s2, &stats[readings])) {
 				stats_clear(&stats[readings]);
-				stats_read(&s1);
+				if (stats_read(&s1) < 0)
+					return -1;
 				redone |= OPTS_REDO_WHEN_NOT_IDLE;
 				continue;
 			}
@@ -1376,7 +1382,8 @@ static int monitor(const int sock)
 			if ((opts & OPTS_REDO_WHEN_NOT_IDLE) &&
 			    (stats[readings].value[CPU_IDLE] < idle_threshold)) {
 				stats_clear(&stats[readings]);
-				stats_read(&s1);
+				if (stats_read(&s1) < 0)
+					return -1;
 				redone |= OPTS_REDO_WHEN_NOT_IDLE;
 				continue;
 			}
@@ -1481,7 +1488,8 @@ static int monitor(const int sock)
 			/* Have we been asked to redo a sample on fork/exec/exit? */
 			if (opts & OPTS_REDO_NETLINK_BUSY && redo) {
 				stats_clear(&stats[readings]);
-				stats_read(&s1);
+				if (stats_read(&s1) < 0)
+					return -1;
 				redone |= OPTS_REDO_NETLINK_BUSY;
 			}
         	}
