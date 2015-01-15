@@ -1304,11 +1304,15 @@ static int monitor(const int sock)
 	stats_headings();
 	row++;
 
-	if ((time_start = gettime_to_double()) < 0.0)
+	if ((time_start = gettime_to_double()) < 0.0) {
+		free(stats);
 		return -1;
+	}
 
-	if (stats_read(&s1) < 0)
+	if (stats_read(&s1) < 0) {
+		free(stats);
 		return -1;
+	}
 
 	while (!stop_recv && (readings < max_readings)) {
 		double time_now, secs;
@@ -1316,8 +1320,10 @@ static int monitor(const int sock)
 		bool redo = false;
 		char __attribute__ ((aligned(NLMSG_ALIGNTO)))buf[4096];
 
-		if ((time_now = gettime_to_double()) < 0.0)
+		if ((time_now = gettime_to_double()) < 0.0) {
+			free(stats);
 			return -1;
+		}
 		/* Timeout to wait for in the future for this sample */
 		secs = time_start + ((double)t * sample_delay) - time_now;
 
@@ -1364,8 +1370,10 @@ static int monitor(const int sock)
 			}
 
 			get_time(tmbuffer, sizeof(tmbuffer));
-			if (stats_read(&s2) < 0)
+			if (stats_read(&s2) < 0) {
+				free(stats);
 				return -1;
+			}
 
 			/*
 			 *  Total ticks was zero, something is broken,
@@ -1373,8 +1381,10 @@ static int monitor(const int sock)
 			 */
 			if (!stats_gather(&s1, &s2, &stats[readings])) {
 				stats_clear(&stats[readings]);
-				if (stats_read(&s1) < 0)
+				if (stats_read(&s1) < 0) {
+					free(stats);
 					return -1;
+				}
 				redone |= OPTS_REDO_WHEN_NOT_IDLE;
 				continue;
 			}
@@ -1382,8 +1392,10 @@ static int monitor(const int sock)
 			if ((opts & OPTS_REDO_WHEN_NOT_IDLE) &&
 			    (stats[readings].value[CPU_IDLE] < idle_threshold)) {
 				stats_clear(&stats[readings]);
-				if (stats_read(&s1) < 0)
+				if (stats_read(&s1) < 0) {
+					free(stats);
 					return -1;
+				}
 				redone |= OPTS_REDO_WHEN_NOT_IDLE;
 				continue;
 			}
@@ -1489,8 +1501,10 @@ static int monitor(const int sock)
 			/* Have we been asked to redo a sample on fork/exec/exit? */
 			if (opts & OPTS_REDO_NETLINK_BUSY && redo) {
 				stats_clear(&stats[readings]);
-				if (stats_read(&s1) < 0)
+				if (stats_read(&s1) < 0) {
+					free(stats);
 					return -1;
+				}
 				redone |= OPTS_REDO_NETLINK_BUSY;
 			}
         	}
