@@ -55,22 +55,23 @@
 #define	RATE_ZERO_LIMIT		(0.001)		/* Less than this we call the power rate zero */
 #define IDLE_THRESHOLD		(98)		/* Less than this and we assume the machine is not idle */
 
-#define CPU_USER	0
-#define CPU_NICE	1
-#define CPU_SYS		2
-#define CPU_IDLE	3
-#define CPU_IOWAIT	4
-#define CPU_IRQ		5
-#define CPU_SOFTIRQ	6
-#define CPU_INTR	7
-#define CPU_CTXT	8
-#define CPU_PROCS_RUN	9
-#define CPU_PROCS_BLK	10
-#define POWER_RATE	11
-#define PROC_FORK	12
-#define PROC_EXEC	13
-#define PROC_EXIT	14
-#define MAX_VALUES	15
+/* Statistics gathered from /proc/stat and process activity */
+#define CPU_USER		(0)
+#define CPU_NICE		(1)
+#define CPU_SYS			(2)
+#define CPU_IDLE		(3)
+#define CPU_IOWAIT		(4)
+#define CPU_IRQ			(5)
+#define CPU_SOFTIRQ		(6)
+#define CPU_INTR		(7)
+#define CPU_CTXT		(8)
+#define CPU_PROCS_RUN		(9)
+#define CPU_PROCS_BLK		(10)
+#define POWER_RATE		(11)
+#define PROC_FORK		(12)
+#define PROC_EXEC		(13)
+#define PROC_EXIT		(14)
+#define MAX_VALUES		(15)
 
 /* Arg opt flags */
 #define OPTS_SHOW_PROC_ACTIVITY	(0x0001)	/* dump out process activity */
