@@ -53,7 +53,7 @@
 #define START_DELAY		(3*60)		/* Delay to wait before sampling */
 #define MAX_PIDS		(32769)		/* Hash Max PIDs */
 #define	RATE_ZERO_LIMIT		(0.001)		/* Less than this we call the power rate zero */
-#define IDLE_THRESHOLD		(98)		/* Less than this and we assume the machine is not idle */
+#define IDLE_THRESHOLD		(98)		/* Less than this and we assume the device is not idle */
 
 /* Statistics gathered from /proc/stat and process activity */
 #define CPU_USER		(0)
@@ -936,7 +936,7 @@ static int power_rate_get_sys_fs(
 	*inaccurate = true;
 
 	if ((dir = opendir(SYS_CLASS_POWER_SUPPLY)) == NULL) {
-		fprintf(stderr, "Machine does not have %s, "
+		fprintf(stderr, "Device does not have %s, "
 			"cannot run the test.\n",
 			SYS_CLASS_POWER_SUPPLY);
 		return -1;
@@ -1021,7 +1021,7 @@ static int power_rate_get_sys_fs(
 	(void)closedir(dir);
 
 	if (! *discharging) {
-		printf("Machine is not discharging, cannot measure power usage.\n");
+		printf("Device is not discharging, cannot measure power usage.\n");
 		return -1;
 	}
 
@@ -1061,7 +1061,7 @@ static int power_rate_get_proc_acpi(
 	*inaccurate = true;
 
 	if ((dir = opendir(PROC_ACPI_BATTERY)) == NULL) {
-		fprintf(stderr, "Machine does not have %s, "
+		fprintf(stderr, "Device does not have %s, "
 			"cannot run the test.\n",
 			PROC_ACPI_BATTERY);
 		return -1;
@@ -1147,7 +1147,7 @@ static int power_rate_get_proc_acpi(
 	(void)closedir(dir);
 
 	if (! *discharging) {
-		printf("Machine is indicating it is not discharging and hence "
+		printf("Device is indicating it is not discharging and hence "
 		       "we cannot measure power usage.\n");
 		return -1;
 	}
@@ -1188,7 +1188,7 @@ static int power_rate_get(
 	    S_ISDIR(buf.st_mode))
 		return power_rate_get_proc_acpi(rate, discharging, inaccurate);
 
-	fprintf(stderr, "Machine does not seem to have a battery, cannot measure power.\n");
+	fprintf(stderr, "Device does not seem to have a battery, cannot measure power.\n");
 	return -1;
 }
 
