@@ -457,17 +457,29 @@ static int netlink_listen(const int sock)
 }
 
 /*
- *  stats_clear()
- *	clear stats
+ *  stats_set()
+ *	set stats
  */
-static void stats_clear(stats_t *const stats)
+static void stats_set(
+	stats_t *const stats,
+	const double value,
+	const bool inaccurate)
 {
 	int i;
 
 	for (i = 0; i < MAX_VALUES; i++) {
-		stats->value[i] = 0.0;
-		stats->inaccurate[i] = false;
+		stats->value[i] = value;
+		stats->inaccurate[i] = inaccurate;
 	}
+}
+
+/*
+ *  stats_set()
+ *	clear stats
+ */
+static inline void stats_clear(stats_t *const stats)
+{
+	stats_set(stats, 0.0, false);
 }
 
 /*
@@ -486,10 +498,22 @@ static void stats_clear_all(stats_t *const stats, const long int n)
  *  stats_read()
  *	gather pertinent /proc/stat data
  */
-static int stats_read(stats_t *const info)
+static int stats_read(stats_t *const stats)
 {
 	FILE *fp;
 	char buf[4096];
+	int i, j;
+
+	static int indices[] = {
+		CPU_USER, CPU_NICE, CPU_SYS, CPU_IDLE,
+		CPU_IOWAIT, CPU_IRQ, CPU_SOFTIRQ, CPU_CTXT,
+		CPU_INTR, CPU_PROCS_RUN, CPU_PROCS_BLK, -1
+	};
+
+	for (i = 0; (j = indices[i]) != -1; i++) {
+		stats->value[j] = 0.0;
+		stats->inaccurate[j] = true;
+	}
 
 	if ((fp = fopen("/proc/stat", "r")) == NULL) {
 		fprintf(stderr, "Cannot read /proc/stat, errno=%d (%s).\n",
@@ -499,22 +523,34 @@ static int stats_read(stats_t *const info)
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		if (strncmp(buf, "cpu ", 4) == 0)
-			sscanf(buf, "%*s %15lf %15lf %15lf %15lf %15lf %15lf %15lf",
-				&(info->value[CPU_USER]),
-				&(info->value[CPU_NICE]),
-				&(info->value[CPU_SYS]),
-				&(info->value[CPU_IDLE]),
-				&(info->value[CPU_IOWAIT]),
-				&(info->value[CPU_IRQ]),
-				&(info->value[CPU_SOFTIRQ]));
+			if (sscanf(buf, "%*s %15lf %15lf %15lf %15lf %15lf %15lf %15lf",
+			    &(stats->value[CPU_USER]),
+			    &(stats->value[CPU_NICE]),
+			    &(stats->value[CPU_SYS]),
+			    &(stats->value[CPU_IDLE]),
+			    &(stats->value[CPU_IOWAIT]),
+			    &(stats->value[CPU_IRQ]),
+			    &(stats->value[CPU_SOFTIRQ])) == 7) {
+				stats->inaccurate[CPU_USER] = false;
+				stats->inaccurate[CPU_NICE] = false;
+				stats->inaccurate[CPU_SYS] = false;
+				stats->inaccurate[CPU_IDLE] = false;
+				stats->inaccurate[CPU_IOWAIT] = false;
+				stats->inaccurate[CPU_IRQ] = false;
+				stats->inaccurate[CPU_SOFTIRQ] = false;
+			}
 		if (strncmp(buf, "ctxt ", 5) == 0)
-			sscanf(buf, "%*s %15lf", &(info->value[CPU_CTXT]));
+			if (sscanf(buf, "%*s %15lf", &(stats->value[CPU_CTXT])) == 1)
+				stats->inaccurate[CPU_CTXT] = false;
 		if (strncmp(buf, "intr ", 5) == 0)
-			sscanf(buf, "%*s %15lf", &(info->value[CPU_INTR]));
+			if (sscanf(buf, "%*s %15lf", &(stats->value[CPU_INTR])) == 1)
+				stats->inaccurate[CPU_INTR] = false;
 		if (strncmp(buf, "procs_running ", 14) == 0)
-			sscanf(buf, "%*s %15lf", &(info->value[CPU_PROCS_RUN]));
+			if (sscanf(buf, "%*s %15lf", &(stats->value[CPU_PROCS_RUN])) == 1)
+				stats->inaccurate[CPU_PROCS_RUN] = false;
 		if (strncmp(buf, "procs_blocked ", 14) == 0)
-			sscanf(buf, "%*s %15lf", &(info->value[CPU_PROCS_BLK]));
+			if (sscanf(buf, "%*s %15lf", &(stats->value[CPU_PROCS_BLK])) == 1)
+				stats->inaccurate[CPU_PROCS_BLK] = false;
 	}
 	(void)fclose(fp);
 
@@ -522,12 +558,32 @@ static int stats_read(stats_t *const info)
 }
 
 /*
- *  On Nexus 4 we occasionally get idle time going backwards so
- *  work around this by ensuring we don't get -ve deltas.
+ *  stats_sane()
+ *	check if stats are accurate and calculate a
+ *	sane -ve delta
  */
-#define SANE_STATS(s1, s2, index)				\
-	((s2->value[index]) - (s1->value[index])) < 0.0 ? 	\
-		0.0 : ((s2->value[index]) - (s1->value[index]))
+static double stats_sane(
+	const stats_t *const s1,
+	const stats_t *const s2,
+	const int index)
+{
+	double ret;
+
+	/* Discard inaccurate or empty stats */
+	if (s1->inaccurate[index] || s2->inaccurate[index])
+		return 0.0;
+
+	/*
+	 *  On Nexus 4 we occasionally get idle time going backwards so
+	 *  work around this by ensuring we don't get -ve deltas.
+	 */
+	ret = s2->value[index] - s1->value[index];
+	return ret < 0.0 ? 0.0 : ret;
+}
+
+#define INACCURATE(s1, s2, index)	\
+	(s1->inaccurate[index] | s2->inaccurate[index])
+
 
 /*
  *  stats_gather()
@@ -540,16 +596,26 @@ static bool stats_gather(
 	stats_t *const res)
 {
 	double total;
+	int i, j;
+	bool inaccurate = false;
 
-	res->value[CPU_USER]    = SANE_STATS(s1, s2, CPU_USER);
-	res->value[CPU_NICE]    = SANE_STATS(s1, s2, CPU_NICE);
-	res->value[CPU_SYS]     = SANE_STATS(s1, s2, CPU_SYS);
-	res->value[CPU_IDLE]    = SANE_STATS(s1, s2, CPU_IDLE);
-	res->value[CPU_IOWAIT]  = SANE_STATS(s1, s2, CPU_IOWAIT);
-	res->value[CPU_IRQ]     = SANE_STATS(s1, s2, CPU_IRQ);
-	res->value[CPU_SOFTIRQ] = SANE_STATS(s1, s2, CPU_SOFTIRQ);
-	res->value[CPU_CTXT]	= SANE_STATS(s1, s2, CPU_CTXT);
-	res->value[CPU_INTR]	= SANE_STATS(s1, s2, CPU_INTR);
+	static int indices[] = {
+		CPU_USER, CPU_NICE, CPU_SYS, CPU_IDLE,
+		CPU_IOWAIT, -1
+	};
+
+	res->value[CPU_USER]    = stats_sane(s1, s2, CPU_USER);
+	res->value[CPU_NICE]    = stats_sane(s1, s2, CPU_NICE);
+	res->value[CPU_SYS]     = stats_sane(s1, s2, CPU_SYS);
+	res->value[CPU_IDLE]    = stats_sane(s1, s2, CPU_IDLE);
+	res->value[CPU_IOWAIT]  = stats_sane(s1, s2, CPU_IOWAIT);
+	res->value[CPU_IRQ]     = stats_sane(s1, s2, CPU_IRQ);
+	res->value[CPU_SOFTIRQ] = stats_sane(s1, s2, CPU_SOFTIRQ);
+	res->value[CPU_CTXT]	= stats_sane(s1, s2, CPU_CTXT);
+	res->value[CPU_INTR]	= stats_sane(s1, s2, CPU_INTR);
+
+	for (i = 0; (j = indices[i]) != -1; i++)
+		inaccurate |= (s1->inaccurate[j] | s2->inaccurate[j]);
 
 	total = res->value[CPU_USER] + res->value[CPU_NICE] +
 		res->value[CPU_SYS] + res->value[CPU_IDLE] +
@@ -557,20 +623,21 @@ static bool stats_gather(
 
 	/*
 	 * This should not happen, but we need to avoid division
-	 * by zero or weird results
+	 * by zero or weird results if the data is deemed valid
 	 */
-	if (total <= 0.0)
+	if (!inaccurate && total <= 0.0)
 		return false;
 
-	res->value[CPU_USER]   = (100.0 * res->value[CPU_USER]) / total;
-	res->value[CPU_NICE]   = (100.0 * res->value[CPU_NICE]) / total;
-	res->value[CPU_SYS]    = (100.0 * res->value[CPU_SYS]) / total;
-	res->value[CPU_IDLE]   = (100.0 * res->value[CPU_IDLE]) / total;
-	res->value[CPU_IOWAIT] = (100.0 * res->value[CPU_IOWAIT]) / total;
-	res->value[CPU_CTXT]   = res->value[CPU_CTXT] / sample_delay;
-	res->value[CPU_INTR]   = res->value[CPU_INTR] / sample_delay;
-	res->value[CPU_PROCS_RUN] = s2->value[CPU_PROCS_RUN];
-	res->value[CPU_PROCS_BLK] = s2->value[CPU_PROCS_BLK];
+	for (i = 0; (j = indices[i]) != -1; i++) {
+		res->value[j] = (INACCURATE(s1, s2, j) || (total <= 0.0)) ?
+			NAN : (100.0 * res->value[j]) / total;
+	}
+	res->value[CPU_CTXT] = (INACCURATE(s1, s2, CPU_CTXT) || (sample_delay <= 0.0)) ?
+			NAN : res->value[CPU_CTXT] / sample_delay;
+	res->value[CPU_INTR] = (INACCURATE(s1, s2, CPU_INTR) || (sample_delay <= 0.0)) ?
+			NAN : res->value[CPU_INTR] / sample_delay;
+	res->value[CPU_PROCS_RUN] = s2->inaccurate[CPU_PROCS_RUN] ? NAN : s2->value[CPU_PROCS_RUN];
+	res->value[CPU_PROCS_BLK] = s2->inaccurate[CPU_PROCS_BLK] ? NAN : s2->value[CPU_PROCS_BLK];
 
 	return true;
 }
@@ -1390,6 +1457,7 @@ static int monitor(const int sock)
 			}
 
 			if ((opts & OPTS_REDO_WHEN_NOT_IDLE) &&
+			    (!stats[readings].inaccurate[CPU_IDLE]) &&
 			    (stats[readings].value[CPU_IDLE] < idle_threshold)) {
 				stats_clear(&stats[readings]);
 				if (stats_read(&s1) < 0) {
