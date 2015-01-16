@@ -46,7 +46,7 @@
 #include <linux/cn_proc.h>
 
 #define MIN_RUN_DURATION	(5*60)		/* We recommend a run of 5 minutes */
-#define SAMPLE_DELAY		(10)		/* Delay between samples in seconds */
+#define SAMPLE_DELAY		(10.0)		/* Delay between samples in seconds */
 #define ROLLING_AVERAGE_SECS	(120)		/* 2 minute rolling average for power usage calculation */
 #define STANDARD_AVERAGE_SECS	(120)
 #define MAX_MEASUREMENTS 	(ROLLING_AVERAGE_SECS + 10)
@@ -127,7 +127,7 @@ typedef struct {
 
 static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
 static long int max_readings;			/* number of samples to gather */
-static long int sample_delay = SAMPLE_DELAY;	/* time between each sample in secs */
+static double sample_delay = SAMPLE_DELAY;	/* time between each sample in secs */
 static long int start_delay = START_DELAY;	/* seconds before we start displaying stats */
 static double idle_threshold = IDLE_THRESHOLD;	/* lower than this and the CPU is busy */
 static log_t infolog;				/* log */
@@ -271,7 +271,7 @@ static double gettime_to_double(void)
 	struct timeval tv;
 
         if (gettimeofday(&tv, NULL) < 0) {
-                fprintf(stderr, "gettimeofday failed: errno=%d (%s)\n",
+                fprintf(stderr, "gettimeofday failed: errno=%d (%s).\n",
                         errno, strerror(errno));
 		return -1.0;
         }
@@ -327,13 +327,13 @@ static int log_printf(const char *const fmt, ...)
 	va_end(ap);
 
 	if ((log_item = calloc(1, sizeof(log_t))) == NULL) {
-		fprintf(stderr, "Out of memory allocating log item\n");
+		fprintf(stderr, "Out of memory allocating log item.\n");
 		return -1;
 	}
 	len = strlen(buffer) + strlen(tmbuffer) + 1;
 	if ((log_item->text = calloc(1, len)) == NULL) {
 		free(log_item);
-		fprintf(stderr, "Out of memory allocating log item text\n");
+		fprintf(stderr, "Out of memory allocating log item text.\n");
 		return -1;
 	}
 	(void)snprintf(log_item->text, len, "%s%s", tmbuffer, buffer);
@@ -404,7 +404,7 @@ static int netlink_connect(void)
     	if ((sock = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_CONNECTOR)) < 0) {
 		if (errno == EPROTONOSUPPORT)
 			return -EPROTONOSUPPORT;
-		fprintf(stderr, "socket failed: errno=%d (%s)\n",
+		fprintf(stderr, "socket failed: errno=%d (%s).\n",
 			errno, strerror(errno));
 		return -1;
 	}
@@ -415,7 +415,7 @@ static int netlink_connect(void)
 	addr.nl_groups = CN_IDX_PROC;
 
 	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-		fprintf(stderr, "Bind failed: errno=%d (%s)\n",
+		fprintf(stderr, "Bind failed: errno=%d (%s).\n",
 			errno, strerror(errno));
 		(void)close(sock);
 		return -1;
@@ -1299,7 +1299,7 @@ static int proc_info_add(const pid_t pid)
 	memset(cmdline, 0, sizeof(cmdline));	/* keep valgrind happy */
 
 	if ((info = calloc(1, sizeof(proc_info_t))) == NULL) {
-		fprintf(stderr, "Cannot allocate all proc info\n");
+		fprintf(stderr, "Cannot allocate all proc info.\n");
 		return -1;
 	}
 	info->pid = pid;
@@ -1308,7 +1308,7 @@ static int proc_info_add(const pid_t pid)
 	(void)proc_cmdline(pid, cmdline, sizeof(cmdline));
 
 	if ((info->cmdline = malloc(strlen(cmdline)+1)) == NULL) {
-		fprintf(stderr, "Cannot allocate all proc info\n");
+		fprintf(stderr, "Cannot allocate all proc info.\n");
 		free(info);
 		return -1;
 	}
@@ -1409,7 +1409,7 @@ static int monitor(const int sock)
 			if (ret < 0) {
 				if (errno == EINTR)
 					break;
-				fprintf(stderr,"select failed: errno=%d (%s)\n",
+				fprintf(stderr,"select failed: errno=%d (%s).\n",
 					errno, strerror(errno));
 				free(stats);
 				return -1;
@@ -1497,7 +1497,7 @@ static int monitor(const int sock)
 				if (errno == EINTR) {
 					continue;
 				} else {
-					fprintf(stderr,"recv failed: errno=%d (%s)\n",
+					fprintf(stderr,"recv failed: errno=%d (%s).\n",
 						errno, strerror(errno));
 					free(stats);
             				return -1;
@@ -1627,7 +1627,7 @@ void show_help(char *const argv[])
 	printf("\t-s show process fork/exec/exit activity log\n");
 	printf("\t-S calculate power from capacity drain using standard average\n");
 	printf("\t-z forcibly ignore zero power rate stats from the battery\n");
-	printf("\tdelay: delay between each sample, default is %d seconds\n", SAMPLE_DELAY);
+	printf("\tdelay: delay between each sample, default is %.1f seconds\n", SAMPLE_DELAY);
 	printf("\tcount: number of samples to take\n");
 }
 
@@ -1651,11 +1651,11 @@ int main(int argc, char * const argv[])
 			errno = 0;
 			start_delay = strtol(optarg, NULL, 10);
 			if (errno) {
-				fprintf(stderr, "Invalid value for start delay\n");
+				fprintf(stderr, "Invalid value for start delay.\n");
 				exit(EXIT_FAILURE);
 			}
 			if (start_delay < 0) {
-				fprintf(stderr, "Start delay must be 0 or more seconds\n");
+				fprintf(stderr, "Start delay must be 0 or more seconds.\n");
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -1666,7 +1666,7 @@ int main(int argc, char * const argv[])
 			opts |= OPTS_REDO_WHEN_NOT_IDLE;
 			idle_threshold = atof(optarg);
 			if ((idle_threshold < 0.0) || (idle_threshold > 99.99)) {
-				fprintf(stderr, "Idle threshold must be between 0..99.99\n");
+				fprintf(stderr, "Idle threshold must be between 0..99.99.\n");
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -1696,13 +1696,13 @@ int main(int argc, char * const argv[])
 
 	if (optind < argc) {
 		errno = 0;
-		sample_delay = strtol(argv[optind++], NULL, 10);
+		sample_delay = atof(argv[optind++]);
 		if (errno) {
-			fprintf(stderr, "Invalid value for start delay\n");
+			fprintf(stderr, "Invalid value for start delay.\n");
 			exit(EXIT_FAILURE);
 		}
-		if (sample_delay < 1) {
-			fprintf(stderr, "Sample delay must be >= 1\n");
+		if (sample_delay < 0.5) {
+			fprintf(stderr, "Sample delay must be greater or equal to 0.5 seconds.\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -1713,37 +1713,44 @@ int main(int argc, char * const argv[])
 		errno = 0;
 		max_readings = strtol(argv[optind++], NULL, 10);
 		if (errno) {
-			fprintf(stderr, "Invalid value for maximum readings\n");
+			fprintf(stderr, "Invalid value for maximum readings.\n");
 			exit(EXIT_FAILURE);
 		}
 		if ((max_readings * sample_delay) < run_duration) {
-			fprintf(stderr, "Number of readings should be at least %ld\n",
-				run_duration / sample_delay);
+			fprintf(stderr, "Number of readings should be at least %ld.\n",
+				(long int)(run_duration / sample_delay));
 			exit(EXIT_FAILURE);
 		}
 	} else {
 		max_readings = run_duration / sample_delay;
 	}
 
+	if (max_readings < 5) {
+		fprintf(stderr, "Number of readings too low.\n");
+		exit(EXIT_FAILURE);
+	}
+	if (max_readings < 10)
+		fprintf(stderr, "Number of readings low, results may be inaccurate.\n");
+
 	if (geteuid() == 0)
 		opts |= OPTS_ROOT_PRIV;
 	else if (opts & OPTS_USE_NETLINK) {
-		fprintf(stderr, "%s needs to be run with root privilege when using -p, -r, -s options\n", argv[0]);
+		fprintf(stderr, "%s needs to be run with root privilege when using -p, -r, -s options.\n", argv[0]);
 		exit(ret);
 	}
 
 	if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
 		exit(ret);
-	printf("Running for %ld seconds (%ld samples at %ld second intervals).\n",
+	printf("Running for %.1f seconds (%ld samples at %.1f second intervals).\n",
 			sample_delay * max_readings, max_readings, sample_delay);
-	printf("ACPI battery power measurements will start in %ld seconds time\n",
+	printf("ACPI battery power measurements will start in %ld seconds time.\n",
 		start_delay);
 	printf("\n");
 
 	if (start_delay > 0) {
 		/* Gather up initial data */
 		for (i = 0; i < start_delay; i++) {
-			printf("Waiting %ld seconds before starting (gathering samples) \r", start_delay - i);
+			printf("Waiting %ld seconds before starting (gathering samples). \r", start_delay - i);
 			fflush(stdout);
 			if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
 				exit(ret);
@@ -1762,7 +1769,7 @@ int main(int argc, char * const argv[])
 		new_action.sa_flags = 0;
 
 		if (sigaction(signals[i], &new_action, NULL) < 0) {
-			fprintf(stderr, "sigaction failed: errno=%d (%s)\n",
+			fprintf(stderr, "sigaction failed: errno=%d (%s).\n",
 				errno, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
