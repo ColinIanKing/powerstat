@@ -1,3 +1,23 @@
+powerstat (0.01.34-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Move a couple of variables to a different scope
+  * Clarify ? & precedence
+  * Rename "Machine" --> "Device" as this can be used on small devices
+  * Make sample delay to be floating point, clean up error handling
+  * Handle bad reads from /proc/stat and make these invalid
+  * Forgot to free stats on error return paths
+  * Increment time t only when a timeout has occurred
+  * Add some more comments
+  * Add check on /proc/stats read and abort if failed
+  * Add '?' getopt handling
+  * Add more checking when getting the time
+  * Update copyright year
+  * Remove SIGSEGV and SIGBUS traps
+  * Simplify the delay time calculations based on start time
+
+ -- Colin King <colin.king@canonical.com>  Fri, 16 Jan 2015 12:07:11 +0000
+
 powerstat (0.01.33-1) unstable; urgency=medium
 
   * Makefile: bump version
