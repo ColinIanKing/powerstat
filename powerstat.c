@@ -1384,8 +1384,6 @@ static int monitor(const int sock)
 	while (!stop_recv && (readings < max_readings)) {
 		double time_now, secs;
 		int ret = 0;
-		bool redo = false;
-		char __attribute__ ((aligned(NLMSG_ALIGNTO)))buf[4096];
 
 		if ((time_now = gettime_to_double()) < 0.0) {
 			free(stats);
@@ -1489,6 +1487,9 @@ static int monitor(const int sock)
 		}
 
 		if (opts & OPTS_USE_NETLINK) {
+			bool redo = false;
+			char __attribute__ ((aligned(NLMSG_ALIGNTO)))buf[4096];
+
         		if ((len = recv(sock, buf, sizeof(buf), 0)) == 0) {
 				free(stats);
 				return 0;
