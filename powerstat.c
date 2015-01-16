@@ -1426,10 +1426,10 @@ static int monitor(const int sock)
 				int indent;
 				(void)snprintf(buffer, sizeof(buffer),
 					"--- Skipped samples(s) because of %s%s%s ---",
-					redone & OPTS_REDO_WHEN_NOT_IDLE ? "low CPU idle" : "",
+					(redone & OPTS_REDO_WHEN_NOT_IDLE) ? "low CPU idle" : "",
 					(redone & (OPTS_REDO_WHEN_NOT_IDLE | OPTS_REDO_NETLINK_BUSY)) ==
 					(OPTS_REDO_WHEN_NOT_IDLE | OPTS_REDO_NETLINK_BUSY) ? " and " : "",
-					redone & OPTS_REDO_NETLINK_BUSY ? "fork/exec/exit activity" : "");
+					(redone & OPTS_REDO_NETLINK_BUSY) ? "fork/exec/exit activity" : "");
 				indent = (80 - strlen(buffer)) / 2;
 				row_increment(&row);
 				printf("%*.*s%s\n", indent, indent, "", buffer);
