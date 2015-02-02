@@ -1687,7 +1687,7 @@ int main(int argc, char * const argv[])
 			opts |= OPTS_ZERO_RATE_ALLOW;
 			break;
 		case '?':
-			printf("Try '%s --help' for more information.\n", app_name);
+			printf("Try '%s -h' for more information.\n", app_name);
 			exit(EXIT_FAILURE);
 		default:
 			show_help(argv);
