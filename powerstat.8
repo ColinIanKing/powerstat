@@ -16,27 +16,22 @@
 .\" .sp <n>    insert n+1 empty lines
 .\" for manpage-specific macros, see man(7)
 .SH NAME
-powerstat \- a tool to measure laptop power consumption
+powerstat \- a tool to measure power consumption
 .br
 
 .SH SYNOPSIS
 .B powerstat
-.RI [ \-b ]
-.RI [ \-d " secs]
-.RI [ \-h ]
-.RI [ \-i " idle]
-.RI [ \-p ]
-.RI [ \-r ]
-.RI [ \-s ]
-.RI [ \-z ]
-.RI [ delay " [count]]
+[options]
+.RI [ delay " [" count ]]
 .br
 
 .SH DESCRIPTION
-powerstat is a program that measures the power consumption of a mobile PC
-that has a battery power souce.  The output is like vmstat but also shows
-power consumption statistics.  At the end of a run, powerstat will calculate
+powerstat is a program that measures the power consumption of a computer
+that has a battery power souce or supports the RAPL (Running Average Power
+Limit) interface.  The output is like vmstat but also shows power
+consumption statistics.  At the end of a run, powerstat will calculate
 the average, standard deviation and min/max of the gathered data.
+.br
 
 Note that running powerstat as root will provide extra information about
 processes that have fork'd, exec'd and exited.
@@ -48,14 +43,14 @@ powerstat options are as follow:
 redo a sample measurement if a system is busy, the default for busy is considered less than 98% CPU idle. The
 CPU idle threshold can be altered using the \-i option.
 .TP
-.B \-d
+.B \-d delay
 specify delay before starting, default is 15 seconds. This gives the machine time to settle down and to 
 dim the laptop display when in idle mode.
 .TP
 .B \-h
 show help.
 .TP
-.B \-i
+.B \-i threshold
 specify the idle threshold (in % CPU idle) to force a re-sample measurement if the CPU is less idle than this
 level. This option implicitly enables the \-b option.
 .TP
@@ -64,6 +59,16 @@ redo a sample measurement if any processes fork(), exec() or exit().
 .TP
 .B \-r
 redo if system is not idle and any processes fork(), exec() or exit(), an alias for \-p \-b
+.TP
+.B \-R
+read power statistics from the RAPL (Running Average Power Limit) domains. This is supported
+by recent Linux kernels and Sandybridge and later Intel processors.  This only covers some
+of the hardware in the machine, such as the processor package, DRAM controller, CPU core
+(power plane 0), graphics uncore (power plane 1) and so forth, so the readings do not cover
+the entire machine.
+.br
+Because the  RAPL readings are accurate and available immediately, the start delay (\-d option)
+is defaulted to zero seconds.
 .TP
 .B \-s
 this dumps a log of the process fork(), exec() and exit() activity on completion.
@@ -92,6 +97,11 @@ powerstat 1 60
 Measure power and redo sampling if we are not idle and we detect  fork()/exec()/exit() activity
 .RS 8
 sudo powerstat \-r
+.RE
+.LP
+Measure power using the Intel RAPL interface:
+.RS 8
+powerstat \-R
 .RE
 .LP
 Measure power and redo sampling if less that 95% idle

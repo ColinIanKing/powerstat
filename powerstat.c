@@ -47,6 +47,8 @@
 
 #define MIN_RUN_DURATION	(5*60)		/* We recommend a run of 5 minutes */
 #define SAMPLE_DELAY		(10.0)		/* Delay between samples in seconds */
+#define SAMPLE_DELAY_RAPL	(1.0)		/* Delay between samples for RAPL mode */
+#define MIN_SAMPLE_DELAY	(0.5)		/* Minimum sample delay */
 #define ROLLING_AVERAGE_SECS	(120)		/* 2 minute rolling average for power usage calculation */
 #define STANDARD_AVERAGE_SECS	(120)
 #define MAX_MEASUREMENTS 	(ROLLING_AVERAGE_SECS + 10)
@@ -80,6 +82,9 @@
 #define OPTS_ZERO_RATE_ALLOW	(0x0008)	/* force allow zero rates */
 #define OPTS_ROOT_PRIV		(0x0010)	/* has root privilege */
 #define OPTS_STANDARD_AVERAGE	(0x0020)	/* calc standard average */
+#define OPTS_RAPL		(0x0040)	/* use Intel RAPL */
+#define OPTS_START_DELAY	(0x0080)	/* -d option used */
+#define OPTS_SAMPLE_DELAY	(0x0100)	/* sample delay has been specified */
 
 #define OPTS_USE_NETLINK	(OPTS_SHOW_PROC_ACTIVITY | \
 				 OPTS_REDO_NETLINK_BUSY |  \
@@ -94,6 +99,10 @@
 #define SYS_FIELD_AMPS_RATE		"POWER_SUPPLY_CURRENT_NOW="
 #define SYS_FIELD_AMPS_LEFT		"POWER_SUPPLY_CHARGE_NOW="
 #define SYS_FIELD_STATUS_DISCHARGING  	"POWER_SUPPLY_STATUS=Discharging"
+
+#if defined(__x86_64__) || defined(__x86_64) || defined(__i386__) || defined(__i386)
+#define POWERSTAT_X86
+#endif
 
 /* Measurement entry */
 typedef struct {
@@ -1169,6 +1178,134 @@ static int power_rate_get_proc_acpi(
 	return 0;
 }
 
+#if defined(POWERSTAT_X86)
+/*
+ *  power_get_rapl_domain_names()
+ *	get RAPL domain names
+ */
+static char *power_get_rapl_domain_names(void)
+{
+	char *names = NULL;
+	size_t len = 0;
+	DIR *dir;
+        struct dirent *entry;
+
+	dir = opendir("/sys/class/powercap");
+	if (dir == NULL)
+		return NULL;
+
+	while ((entry = readdir(dir)) != NULL) {
+		char path[PATH_MAX];
+		char name[128];
+		FILE *fp;
+
+		/* Ignore non Intel RAPL interfaces */
+		if (strncmp(entry->d_name, "intel-rapl", 10))
+			continue;
+
+		snprintf(path, sizeof(path),
+			"/sys/class/powercap/%s/name",
+			entry->d_name);
+
+		if ((fp = fopen(path, "r")) == NULL)
+			continue;
+		if (fgets(name, sizeof(name), fp) != NULL) {
+			char *tmp;
+			char new_name[sizeof(name) + 3];
+			size_t new_len = strlen(name);
+
+			name[strcspn(name, "\n")] = '\0';
+			snprintf(new_name, sizeof(new_name), "%s%s",
+				len == 0 ? "" : ", ", name);
+			new_len = strlen(new_name);
+
+			tmp = realloc(names, new_len + len + 1);
+			if (!tmp) {
+				fprintf(stderr, "Out of memory allocating RAPL domain names.\n");
+				free(names);
+				names = NULL;
+				fclose(fp);
+				break;
+			}
+			names = tmp;
+			strncpy(names + len, new_name, new_len + 1);
+			len += new_len;
+		}
+		fclose(fp);
+	}
+	(void)closedir(dir);
+
+	return names;
+}
+
+/*
+ *  power_rate_get_rapl()
+ *	get power discharge rate from battery via the RAPL interface
+ */
+static int power_rate_get_rapl(
+	double *const rate,
+	bool *const discharging,
+	bool *const inaccurate)
+{
+	DIR *dir;
+        struct dirent *entry;
+	double t_now, ujoules_now = 0.0;
+	static double t_then = -1.0, ujoules_then = -1.0;
+
+	*discharging = false;
+	*inaccurate = true;
+	*rate = 0.0;
+
+	dir = opendir("/sys/class/powercap");
+	if (dir == NULL) {
+		printf("Device does not have RAPL, cannot measure power usage.\n");
+		return -1;
+	}
+
+	t_now = gettime_to_double();
+
+	while ((entry = readdir(dir)) != NULL) {
+		char path[PATH_MAX];
+		FILE *fp;
+		double ujoules;
+
+		/* Ignore non Intel RAPL interfaces */
+		if (strncmp(entry->d_name, "intel-rapl", 10))
+			continue;
+
+		snprintf(path, sizeof(path),
+			"/sys/class/powercap/%s/energy_uj",
+			entry->d_name);
+
+		if ((fp = fopen(path, "r")) == NULL)
+			continue;
+
+		if (fscanf(fp, "%lf\n", &ujoules) == 1) {
+			ujoules_now += ujoules;
+			*discharging = true;
+			*inaccurate = false;
+		}
+		fclose(fp);
+	}
+	(void)closedir(dir);
+
+	if (t_then < 0.0) {
+		t_then = t_now;
+		ujoules_then = ujoules_now;
+		*inaccurate = true;
+		return 0;
+	}
+
+	*rate = (ujoules_now - ujoules_then) /
+		(1000000.0 * (t_now - t_then));
+
+	t_then = t_now;
+	ujoules_then = ujoules_now;
+
+	return 0;
+}
+#endif
+
 /*
  *  power_rate_get()
  *	fetch power via which ever interface is available
@@ -1179,6 +1316,11 @@ static int power_rate_get(
 	bool *const inaccurate)
 {
 	struct stat buf;
+
+#if defined(POWERSTAT_X86)
+	if (opts & OPTS_RAPL)
+		return power_rate_get_rapl(rate, discharging, inaccurate);
+#endif
 
 	if ((stat(SYS_CLASS_POWER_SUPPLY, &buf) != -1) &&
 	    S_ISDIR(buf.st_mode))
@@ -1599,12 +1741,25 @@ static int monitor(const int sock)
 	printf("%6.2f Watts on Average with Standard Deviation %-6.2f\n",
 		average.value[POWER_RATE], stddev.value[POWER_RATE]);
 
-	if (power_calc_from_capacity) {
-		printf("Note: Power calculated from battery capacity drain, may not be accurate.\n");
-	} else {
-		if (opts & OPTS_STANDARD_AVERAGE)
-			printf("Note: The battery supplied suitable power data, -S option not required.\n");
+#if defined(POWERSTAT_X86)
+	if (opts & OPTS_RAPL) {
+		char *names = power_get_rapl_domain_names();
+
+		printf("Note: power read from RAPL domains: %s.\n",
+			names ? names : "unknown");
+		printf("These readings do not cover all the hardware in this device.\n");
+		free(names);
+	} else
+#endif
+	{
+		if (power_calc_from_capacity) {
+			printf("Note: Power calculated from battery capacity drain, may not be accurate.\n");
+		} else {
+			if (opts & OPTS_STANDARD_AVERAGE)
+				printf("Note: The battery supplied suitable power data, -S option not required.\n");
+		}
 	}
+
 
 	free(stats);
 	return 0;
@@ -1618,13 +1773,16 @@ static int monitor(const int sock)
 void show_help(char *const argv[])
 {
 	printf("%s, version %s\n\n", app_name, VERSION);
-	printf("usage: %s [-d secs] [-i idle] [-b|-h|-p|-r|-s|-z] [delay [count]]\n", argv[0]);
+	printf("usage: %s [-d secs] [-i thresh] [-b|-h|-p|-r|-R|-s|-z] [delay [count]]\n", argv[0]);
 	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
 	printf("\t-d specify delay before starting, default is %ld seconds\n", start_delay);
 	printf("\t-h show help\n");
 	printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
 	printf("\t-p redo a sample if we see process fork/exec/exit activity\n");
 	printf("\t-r redo a sample if busy and we see process activity (same as -b -p)\n");
+#if defined(POWERSTAT_X86)
+	printf("\t-R gather stats from Intel RAPL interface\n");
+#endif
 	printf("\t-s show process fork/exec/exit activity log\n");
 	printf("\t-S calculate power from capacity drain using standard average\n");
 	printf("\t-z forcibly ignore zero power rate stats from the battery\n");
@@ -1641,7 +1799,11 @@ int main(int argc, char * const argv[])
 	struct sigaction new_action;
 
 	for (;;) {
+#if defined(POWERSTAT_X86)
+		int c = getopt(argc, argv, "bd:hi:prszSR");
+#else
 		int c = getopt(argc, argv, "bd:hi:prszS");
+#endif
 		if (c == -1)
 			break;
 		switch (c) {
@@ -1649,6 +1811,7 @@ int main(int argc, char * const argv[])
 			opts |= OPTS_REDO_WHEN_NOT_IDLE;
 			break;
 		case 'd':
+			opts |= OPTS_START_DELAY;
 			errno = 0;
 			start_delay = strtol(optarg, NULL, 10);
 			if (errno) {
@@ -1677,6 +1840,11 @@ int main(int argc, char * const argv[])
 		case 'r':
 			opts |= (OPTS_REDO_NETLINK_BUSY | OPTS_REDO_WHEN_NOT_IDLE);
 			break;
+#if defined(POWERSTAT_X86)
+		case 'R':
+			opts |= OPTS_RAPL;
+			break;
+#endif
 		case 's':
 			opts |= OPTS_SHOW_PROC_ACTIVITY;
 			break;
@@ -1696,17 +1864,25 @@ int main(int argc, char * const argv[])
 	}
 
 	if (optind < argc) {
+		opts |= OPTS_SAMPLE_DELAY;
 		errno = 0;
 		sample_delay = atof(argv[optind++]);
 		if (errno) {
 			fprintf(stderr, "Invalid value for start delay.\n");
 			exit(EXIT_FAILURE);
 		}
-		if (sample_delay < 0.5) {
-			fprintf(stderr, "Sample delay must be greater or equal to 0.5 seconds.\n");
+		if (sample_delay < MIN_SAMPLE_DELAY) {
+			fprintf(stderr, "Sample delay must be greater or equal "
+				"to %.1f seconds.\n", MIN_SAMPLE_DELAY);
 			exit(EXIT_FAILURE);
 		}
 	}
+#if defined(POWERSTAT_X86)
+	if ((opts & (OPTS_START_DELAY | OPTS_RAPL)) == OPTS_RAPL)
+		start_delay = 0;
+	if ((opts & (OPTS_SAMPLE_DELAY | OPTS_RAPL)) == OPTS_RAPL)
+		sample_delay = SAMPLE_DELAY_RAPL;
+#endif
 
 	run_duration = MIN_RUN_DURATION + START_DELAY - start_delay;
 
