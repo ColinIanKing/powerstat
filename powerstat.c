@@ -1251,6 +1251,7 @@ static int power_rate_get_rapl(
         struct dirent *entry;
 	double t_now, ujoules_now = 0.0;
 	static double t_then = -1.0, ujoules_then = -1.0;
+	int n = 0;
 
 	*discharging = false;
 	*inaccurate = true;
@@ -1284,10 +1285,16 @@ static int power_rate_get_rapl(
 			ujoules_now += ujoules;
 			*discharging = true;
 			*inaccurate = false;
+			n++;
 		}
 		fclose(fp);
 	}
 	(void)closedir(dir);
+
+	if (!n) {
+		printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
+		return -1;
+	}
 
 	if (t_then < 0.0) {
 		t_then = t_now;
