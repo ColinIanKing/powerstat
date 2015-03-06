@@ -1282,6 +1282,12 @@ static int power_rate_get_rapl(
 			continue;
 
 		if (fscanf(fp, "%lf\n", &ujoules) == 1) {
+			/* Bodge this for now on -ve wrap arounds */
+			if (ujoules < 0.0) {
+				*inaccurate = true;
+				ujoules_now = 0.0;
+				break;
+			}
 			ujoules_now += ujoules;
 			*discharging = true;
 			*inaccurate = false;
