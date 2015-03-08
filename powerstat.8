@@ -47,6 +47,10 @@ CPU idle threshold can be altered using the \-i option.
 specify delay before starting, default is 15 seconds. This gives the machine time to settle down and to 
 dim the laptop display when in idle mode.
 .TP
+.B \-D
+enable extra power stats showing all the power domain power readings. This currently only applies to the
+\-R RAPL option.
+.TP
 .B \-h
 show help.
 .TP
@@ -102,6 +106,11 @@ sudo powerstat \-r
 Measure power using the Intel RAPL interface:
 .RS 8
 powerstat \-R
+.RE
+.LP
+Measure power using the Intel RAPL interface and show extra RAPL domain power readings:
+.RS 8
+powerstat \-RD
 .RE
 .LP
 Measure power and redo sampling if less that 95% idle

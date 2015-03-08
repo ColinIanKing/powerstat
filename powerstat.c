@@ -56,7 +56,9 @@
 #define MAX_PIDS		(32769)		/* Hash Max PIDs */
 #define	RATE_ZERO_LIMIT		(0.001)		/* Less than this we call the power rate zero */
 #define IDLE_THRESHOLD		(98)		/* Less than this and we assume the device is not idle */
-#define MAX_RAPL_DOMAINS	(1031)		/* Max RAPL Domains in hash table */
+
+#define MAX_POWER_DOMAINS	(16)
+#define MAX_POWER_VALUES	(MAX_POWER_DOMAINS + 1)
 
 /* Statistics gathered from /proc/stat and process activity */
 #define CPU_USER		(0)
@@ -70,11 +72,12 @@
 #define CPU_CTXT		(8)
 #define CPU_PROCS_RUN		(9)
 #define CPU_PROCS_BLK		(10)
-#define POWER_RATE		(11)
-#define PROC_FORK		(12)
-#define PROC_EXEC		(13)
-#define PROC_EXIT		(14)
-#define MAX_VALUES		(15)
+#define PROC_FORK		(11)
+#define PROC_EXEC		(12)
+#define PROC_EXIT		(13)
+#define POWER_TOTAL		(14)
+#define POWER_DOMAIN_0		(15)
+#define MAX_VALUES		(POWER_DOMAIN_0 + MAX_POWER_VALUES)
 
 /* Arg opt flags */
 #define OPTS_SHOW_PROC_ACTIVITY	(0x0001)	/* dump out process activity */
@@ -86,6 +89,7 @@
 #define OPTS_RAPL		(0x0040)	/* use Intel RAPL */
 #define OPTS_START_DELAY	(0x0080)	/* -d option used */
 #define OPTS_SAMPLE_DELAY	(0x0100)	/* sample delay has been specified */
+#define OPTS_DOMAIN_STATS	(0x0200)	/* Extra wide power domain stats */
 
 #define OPTS_USE_NETLINK	(OPTS_SHOW_PROC_ACTIVITY | \
 				 OPTS_REDO_NETLINK_BUSY |  \
@@ -110,6 +114,7 @@ typedef struct {
 	double	value;		/* Measurement value */
 	time_t	when;		/* When it was measured */
 } measurement_t;
+
 
 /* Statistics entry */
 typedef struct {
@@ -138,13 +143,14 @@ typedef struct {
 /* RAPL domain info */
 typedef struct rapl_info {
 	char *name;
+	char *domain_name;
 	double max_energy_uj;
 	double last_energy_uj;
+	double t_last;
 	struct rapl_info *next;
 } rapl_info_t;
 
-static rapl_info_t *rapl_info[MAX_RAPL_DOMAINS];/* RAPL hash table */
-
+static rapl_info_t *rapl_list = NULL;
 static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
 static long int max_readings;			/* number of samples to gather */
 static double sample_delay = SAMPLE_DELAY;	/* time between each sample in secs */
@@ -155,6 +161,8 @@ static int opts;				/* opt arg opt flags */
 static volatile int stop_recv;			/* sighandler stop flag */
 static bool power_calc_from_capacity = false;	/* true of power is calculated via capacity change */
 static const char *app_name = "powerstat";	/* name of application */
+static const char *(*get_domain)(const int i) = NULL;
+static uint8_t power_domains = 0;
 
 /*
  *  Attempt to catch a range of signals so
@@ -668,10 +676,20 @@ static bool stats_gather(
  */
 static void stats_headings(void)
 {
+	uint8_t i;
+
 	if (opts & OPTS_USE_NETLINK)
-		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts\n");
+		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts");
 	else
-		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s  Watts\n");
+		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s  Watts");
+
+	if (opts & OPTS_DOMAIN_STATS) {
+		for (i = 0; i < power_domains; i++)
+			printf(" %6.6s",
+				get_domain ? get_domain(i) : "unknown");
+	}
+
+	printf("\n");
 }
 
 /*
@@ -680,10 +698,18 @@ static void stats_headings(void)
  */
 static void stats_ruler(void)
 {
+	uint8_t i;
+
 	if (opts & OPTS_USE_NETLINK)
-		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------\n");
+		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------");
 	else
-		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ------\n");
+		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ------");
+
+	if (opts & OPTS_DOMAIN_STATS) {
+		for (i = 0; i < power_domains; i++)
+			printf(" ------");
+	}
+	printf("\n");
 }
 
 /*
@@ -711,25 +737,26 @@ static void stats_print(
 	const stats_t *const s)
 {
 	char buf[10];
+	uint8_t i;
 
 	if (summary) {
-		if (s->inaccurate[POWER_RATE])
+		if (s->inaccurate[POWER_TOTAL])
 			(void)snprintf(buf, sizeof(buf), "-N/A-");
 		else
 			(void)snprintf(buf, sizeof(buf), "%6.2f",
-				s->value[POWER_RATE]);
+				s->value[POWER_TOTAL]);
 	} else {
 		(void)snprintf(buf, sizeof(buf), "%6.2f%s",
-			s->value[POWER_RATE],
-			s->inaccurate[POWER_RATE] ? "E" : "");
+			s->value[POWER_TOTAL],
+			s->inaccurate[POWER_TOTAL] ? "E" : "");
 	}
 
 	if (opts & OPTS_USE_NETLINK) {
 		char *fmt = summary ?
 			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f "
-			"%4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %s\n" :
+			"%4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %s" :
 			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f "
-			"%4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %s\n";
+			"%4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %s";
 		printf(fmt,
 			prefix,
 			s->value[CPU_USER], s->value[CPU_NICE],
@@ -741,9 +768,9 @@ static void stats_print(
 	} else {
 		char *fmt = summary ?
 			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f "
-			"%4.1f %6.1f %6.1f %s\n" :
+			"%4.1f %6.1f %6.1f %s" :
 			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f "
-			"%4.0f %6.0f %6.0f %s\n";
+			"%4.0f %6.0f %6.0f %s";
 		printf(fmt,
 			prefix,
 			s->value[CPU_USER], s->value[CPU_NICE],
@@ -752,6 +779,12 @@ static void stats_print(
 			s->value[CPU_CTXT], s->value[CPU_INTR],
 			buf);
 	}
+	if (opts & OPTS_DOMAIN_STATS) {
+		for (i = 0; i < power_domains; i++)
+			printf(" %6.1f", s->value[POWER_DOMAIN_0 + i]);
+	}
+
+	printf("\n");
 }
 
 /*
@@ -939,21 +972,20 @@ static void calc_from_capacity(
 }
 
 /*
- *  power_rate_get_sys_fs()
+ *  power_get_sys_fs()
  *	get power discharge rate from battery via /sys interface
  */
-static int power_rate_get_sys_fs(
-	double *const rate,
-	bool *const discharging,
-	bool *const inaccurate)
+static int power_get_sys_fs(
+	stats_t *stats,
+	bool *const discharging)
 {
 	DIR *dir;
 	struct dirent *dirent;
 	double total_watts = 0.0, total_capacity = 0.0;
 
-	*rate = 0.0;
+	stats->value[POWER_TOTAL] = 0.0;
+	stats->inaccurate[POWER_TOTAL] = true;
 	*discharging = false;
-	*inaccurate = true;
 
 	if ((dir = opendir(SYS_CLASS_POWER_SUPPLY)) == NULL) {
 		fprintf(stderr, "Device does not have %s, "
@@ -1051,24 +1083,23 @@ static int power_rate_get_sys_fs(
 	 *  have to figure out anything from capacity change over time.
 	 */
 	if (total_watts > RATE_ZERO_LIMIT) {
-		*rate = total_watts;
-		*inaccurate = (total_watts < 0.0);
+		stats->value[POWER_TOTAL] = total_watts;
+		stats->inaccurate[POWER_TOTAL] = (total_watts < 0.0);
 		return 0;
 	}
 
 	/*  Rate not known, so calculate it from historical data, sigh */
-	calc_from_capacity(total_capacity, rate, inaccurate);
+	calc_from_capacity(total_capacity, &stats->value[POWER_TOTAL], &stats->inaccurate[POWER_TOTAL]);
 	return 0;
 }
 
 /*
- *  power_rate_get_proc_acpi()
+ *  power_get_proc_acpi()
  *	get power discharge rate from battery via /proc/acpi interface
  */
-static int power_rate_get_proc_acpi(
-	double *const rate,
-	bool *const discharging,
-	bool *const inaccurate)
+static int power_get_proc_acpi(
+	stats_t *stats,
+	bool *const discharging)
 {
 	DIR *dir;
 	FILE *file;
@@ -1076,9 +1107,9 @@ static int power_rate_get_proc_acpi(
 	char filename[PATH_MAX];
 	double total_watts = 0.0, total_capacity = 0.0;
 
-	*rate = 0.0;
+	stats->value[POWER_TOTAL] = 0.0;
+	stats->inaccurate[POWER_TOTAL] = true;
 	*discharging = false;
-	*inaccurate = true;
 
 	if ((dir = opendir(PROC_ACPI_BATTERY)) == NULL) {
 		fprintf(stderr, "Device does not have %s, "
@@ -1179,57 +1210,131 @@ static int power_rate_get_proc_acpi(
 	 * time.
 	 */
 	if (total_watts > RATE_ZERO_LIMIT) {
-		*rate = total_watts;
-		*inaccurate = (total_watts < 0.0);
+		stats->value[POWER_TOTAL] = total_watts;
+		stats->inaccurate[POWER_TOTAL] = (total_watts < 0.0);
 		return 0;
 	}
 
 	/*  Rate not known, so calculate it from historical data, sigh */
-	calc_from_capacity(total_capacity, rate, inaccurate);
+	calc_from_capacity(total_capacity, &stats->value[POWER_TOTAL], &stats->inaccurate[POWER_TOTAL]);
 	return 0;
 }
 
 #if defined(POWERSTAT_X86)
 
 /*
- *  rapl_info_hash()
- *	Hash a rapl name, from Aho, Sethi, Ullman, Compiling Techniques.
+ *  rapl_free_list()
+ *	free RAPL list
  */
-static inline uint32_t rapl_info_hash(const char *str)
+void rapl_free_list(void)
 {
-	uint32_t h = 0;
+	rapl_info_t *rapl = rapl_list;
 
-	while (*str) {
-		uint32_t g;
-		h = (h << 4) + (*str);
-		if (0 != (g = h & 0xf0000000)) {
-			h = h ^ (g >> 24);
-			h = h ^ g;
-		}
-		str++;
+	while (rapl) {
+		rapl_info_t *next = rapl->next;
+
+		free(rapl->name);
+		free(rapl->domain_name);
+		free(rapl);
+		rapl = next;
 	}
+}
 
-	return h % MAX_RAPL_DOMAINS;
+static const char *rapl_get_domain(const int n)
+{
+	int i;
+	static char buf[128];
+
+	rapl_info_t *rapl = rapl_list;
+
+	for (i = 0; i < n && rapl; i++) {
+		rapl = rapl->next;
+	}
+	if (rapl) {
+		if (!strncmp(rapl->domain_name, "package-", 8)) {
+			snprintf(buf, sizeof(buf), "pkg-%s", rapl->domain_name + 8);
+			return buf;
+		}
+		return rapl->domain_name;
+	}
+	return "unknown";
 }
 
 /*
- *  rapl_free_hash()
- *	free RAPL hash table
+ *  rapl_get_domains()
  */
-void rapl_free_hash(void)
+static int rapl_get_domains(void)
 {
-	uint32_t h;
+	DIR *dir;
+        struct dirent *entry;
+	int n = 0;
 
-	for (h = 0; h < MAX_RAPL_DOMAINS; h++) {
-		rapl_info_t *rapl = rapl_info[h];
+	dir = opendir("/sys/class/powercap");
+	if (dir == NULL) {
+		printf("Device does not have RAPL, cannot measure power usage.\n");
+		return -1;
+	}
 
-		while (rapl) {
-			rapl_info_t *next = rapl->next;
+	while ((entry = readdir(dir)) != NULL) {
+		char path[PATH_MAX];
+		FILE *fp;
+		rapl_info_t *rapl;
+
+		/* Ignore non Intel RAPL interfaces */
+		if (strncmp(entry->d_name, "intel-rapl", 10))
+			continue;
+
+		if ((rapl = calloc(1, sizeof(*rapl))) == NULL) {
+			fprintf(stderr, "Cannot allocate RAPL information.\n");
+			closedir(dir);
+			return -1;
+		}
+		if ((rapl->name = strdup(entry->d_name)) == NULL) {
+			fprintf(stderr, "Cannot allocate RAPL name information.\n");
+			closedir(dir);
+			free(rapl);
+			return -1;
+		}
+		snprintf(path, sizeof(path),
+			"/sys/class/powercap/%s/max_energy_range_uj",
+			entry->d_name);
+
+		rapl->max_energy_uj = 0.0;
+		if ((fp = fopen(path, "r")) != NULL) {
+			if (fscanf(fp, "%lf\n", &rapl->max_energy_uj) != 1)
+				rapl->max_energy_uj = 0.0;
+			(void)fclose(fp);
+		}
+		snprintf(path, sizeof(path),
+			"/sys/class/powercap/%s/name",
+			entry->d_name);
+
+		rapl->domain_name = NULL;
+		if ((fp = fopen(path, "r")) != NULL) {
+			char domain_name[128];
+
+			if (fgets(domain_name, sizeof(domain_name), fp) != NULL) {
+				domain_name[strcspn(domain_name, "\n")] = '\0';
+				rapl->domain_name = strdup(domain_name);
+				(void)fclose(fp);
+			}
+		}
+		if (rapl->domain_name == NULL) {
 			free(rapl->name);
 			free(rapl);
-			rapl = next;
+			continue;
 		}
+
+		rapl->next = rapl_list;
+		rapl_list = rapl;
+		n++;
 	}
+	(void)closedir(dir);
+	power_domains = n;
+
+	if (!n)
+		printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
+	return n;
 }
 
 /*
@@ -1240,137 +1345,70 @@ static char *power_get_rapl_domain_names(void)
 {
 	char *names = NULL;
 	size_t len = 0;
-	DIR *dir;
-        struct dirent *entry;
+	rapl_info_t *rapl;
 
-	dir = opendir("/sys/class/powercap");
-	if (dir == NULL)
-		return NULL;
+	for (rapl = rapl_list; rapl; rapl = rapl->next) {
+		char new_name[strlen(rapl->domain_name) + 3];
+		char *tmp;
+		size_t new_len;
 
-	while ((entry = readdir(dir)) != NULL) {
-		char path[PATH_MAX];
-		char name[128];
-		FILE *fp;
-
-		/* Ignore non Intel RAPL interfaces */
-		if (strncmp(entry->d_name, "intel-rapl", 10))
-			continue;
-
-		snprintf(path, sizeof(path),
-			"/sys/class/powercap/%s/name",
-			entry->d_name);
-
-		if ((fp = fopen(path, "r")) == NULL)
-			continue;
-		if (fgets(name, sizeof(name), fp) != NULL) {
-			char *tmp;
-			char new_name[sizeof(name) + 3];
-			size_t new_len = strlen(name);
-
-			name[strcspn(name, "\n")] = '\0';
-			snprintf(new_name, sizeof(new_name), "%s%s",
-				len == 0 ? "" : ", ", name);
-			new_len = strlen(new_name);
-
-			tmp = realloc(names, new_len + len + 1);
-			if (!tmp) {
-				fprintf(stderr, "Out of memory allocating RAPL domain names.\n");
-				free(names);
-				names = NULL;
-				fclose(fp);
-				break;
-			}
-			names = tmp;
-			strncpy(names + len, new_name, new_len + 1);
-			len += new_len;
+		snprintf(new_name, sizeof(new_name), "%s%s",
+				len == 0 ? "" : ", ", rapl->domain_name);
+		new_len = strlen(new_name);
+		tmp = realloc(names, new_len + len + 1);
+		if (!tmp) {
+			fprintf(stderr, "Out of memory allocating RAPL domain names.\n");
+			free(names);
+			names = NULL;
+			break;
 		}
-		fclose(fp);
+		names = tmp;
+		strncpy(names + len, new_name, new_len + 1);
+		len += new_len;
 	}
-	(void)closedir(dir);
 
 	return names;
 }
 
 /*
- *  power_rate_get_rapl()
+ *  power_get_rapl()
  *	get power discharge rate from battery via the RAPL interface
  */
-static int power_rate_get_rapl(
-	double *const rate,
-	bool *const discharging,
-	bool *const inaccurate)
+static int power_get_rapl(
+	stats_t *stats,
+	bool *const discharging)
 {
-	DIR *dir;
-        struct dirent *entry;
-	double t_now, ujoules_now = 0.0;
-	static double t_then = -1.0, ujoules_then = -1.0;
+	double *const rapl_rates = &stats->value[POWER_DOMAIN_0 - POWER_TOTAL];
+	double t_now;
+	static bool first = true;
+	rapl_info_t *rapl;
 	int n = 0;
 
+	stats->inaccurate[POWER_TOTAL] = false;	/* Assume OK until found otherwise */
+	stats->value[POWER_TOTAL] = 0.0;
+	get_domain = rapl_get_domain;
 	*discharging = false;
-	*inaccurate = true;
-	*rate = 0.0;
-
-	dir = opendir("/sys/class/powercap");
-	if (dir == NULL) {
-		printf("Device does not have RAPL, cannot measure power usage.\n");
-		return -1;
-	}
 
 	t_now = gettime_to_double();
 
-	while ((entry = readdir(dir)) != NULL) {
+	for (rapl = rapl_list; rapl; rapl = rapl->next) {
 		char path[PATH_MAX];
 		FILE *fp;
 		double ujoules;
-		uint32_t hash;
-		rapl_info_t *rapl;
-
-		/* Ignore non Intel RAPL interfaces */
-		if (strncmp(entry->d_name, "intel-rapl", 10))
-			continue;
-
-		/* Get RAPL maximum, we need to check for wrap-arounds, sigh */
-		hash = rapl_info_hash(entry->d_name);
-		for (rapl = rapl_info[hash]; rapl; rapl = rapl->next) {
-			if (!strcmp(entry->d_name, rapl->name))
-				break;
-		}
-		/* Not already cached, then get read it and cache it */
-		if (rapl == NULL) {
-			if ((rapl = calloc(1, sizeof(*rapl))) == NULL) {
-				fprintf(stderr, "Cannot allocate RAPL information.\n");
-				closedir(dir);
-				return -1;
-			}
-			if ((rapl->name = strdup(entry->d_name)) == NULL) {
-				fprintf(stderr, "Cannot allocate RAPL name information.\n");
-				closedir(dir);
-				return -1;
-			}
-			snprintf(path, sizeof(path),
-				"/sys/class/powercap/%s/max_energy_range_uj",
-				entry->d_name);
-
-			rapl->max_energy_uj = 0.0;
-			if ((fp = fopen(path, "r")) != NULL) {
-				if (fscanf(fp, "%lf\n", &rapl->max_energy_uj) != 1)
-					rapl->max_energy_uj = 0.0;
-				fclose(fp);
-			}
-			rapl->next = rapl_info[hash];
-			rapl_info[hash] = rapl;
-
-			printf("%s -> %f\n", rapl->name, rapl->max_energy_uj);
-		}
 
 		snprintf(path, sizeof(path),
 			"/sys/class/powercap/%s/energy_uj",
-			entry->d_name);
+			rapl->name);
 
 		if ((fp = fopen(path, "r")) == NULL)
 			continue;
 
 		if (fscanf(fp, "%lf\n", &ujoules) == 1) {
+			double t_delta = t_now - rapl->t_last;
+			double last_energy_uj = rapl->last_energy_uj;
+
+			rapl->t_last = t_now;
+
 			/* Wrapped around since last time? */
 			if (ujoules - rapl->last_energy_uj < 0.0) {
 				rapl->last_energy_uj = ujoules;
@@ -1378,60 +1416,63 @@ static int power_rate_get_rapl(
 			} else {
 				rapl->last_energy_uj = ujoules;
 			}
-			ujoules_now += ujoules;
-			*discharging = true;
-			*inaccurate = false;
+
+			if (first || (t_delta <= 0.0)) {
+				rapl_rates[n] = 0.0;
+				stats->inaccurate[POWER_TOTAL] = true;
+			} else {
+				rapl_rates[n] =
+					(ujoules - last_energy_uj) / (t_delta * 1000000.0);
+			}
+			stats->value[POWER_TOTAL] += rapl_rates[n];
+			stats->value[POWER_DOMAIN_0 + n] = rapl_rates[n];
 			n++;
+			*discharging = true;
 		}
 		fclose(fp);
 	}
-	(void)closedir(dir);
+
+	if (first) {
+		stats->inaccurate[POWER_TOTAL] = true;
+		first = false;
+	}
 
 	if (!n) {
 		printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
 		return -1;
 	}
-
-	if (t_then < 0.0) {
-		t_then = t_now;
-		ujoules_then = ujoules_now;
-		*inaccurate = true;
-		return 0;
-	}
-
-	*rate = (ujoules_now - ujoules_then) /
-		(1000000.0 * (t_now - t_then));
-
-	t_then = t_now;
-	ujoules_then = ujoules_now;
-
 	return 0;
 }
 #endif
 
 /*
- *  power_rate_get()
+ *  power_get()
  *	fetch power via which ever interface is available
  */
-static int power_rate_get(
-	double *const rate,
-	bool *const discharging,
-	bool *const inaccurate)
+static int power_get(
+	stats_t *stats,
+	bool *const discharging)
 {
 	struct stat buf;
+	int i;
+
+	for (i = POWER_TOTAL; i < MAX_VALUES; i++) {
+		stats->value[i] = i;
+		stats->inaccurate[i] = 0.0;
+	}
 
 #if defined(POWERSTAT_X86)
 	if (opts & OPTS_RAPL)
-		return power_rate_get_rapl(rate, discharging, inaccurate);
+		return power_get_rapl(stats, discharging);
 #endif
 
 	if ((stat(SYS_CLASS_POWER_SUPPLY, &buf) != -1) &&
 	    S_ISDIR(buf.st_mode))
-		return power_rate_get_sys_fs(rate, discharging, inaccurate);
+		return power_get_sys_fs(stats, discharging);
 
 	if ((stat(PROC_ACPI_BATTERY, &buf) != -1) &&
 	    S_ISDIR(buf.st_mode))
-		return power_rate_get_proc_acpi(rate, discharging, inaccurate);
+		return power_get_proc_acpi(stats, discharging);
 
 	fprintf(stderr, "Device does not seem to have a battery, cannot measure power.\n");
 	return -1;
@@ -1711,9 +1752,7 @@ static int monitor(const int sock)
 				continue;
 			}
 
-			if (power_rate_get(&stats[readings].value[POWER_RATE],
-					   &discharging,
-					   &stats[readings].inaccurate[POWER_RATE]) < 0) {
+			if (power_get(&stats[readings], &discharging) < 0) {
 				free(stats);
 				return -1; 	/* Failure to read */
 			}
@@ -1842,7 +1881,7 @@ static int monitor(const int sock)
 
 	printf("Summary:\n");
 	printf("%6.2f Watts on Average with Standard Deviation %-6.2f\n",
-		average.value[POWER_RATE], stddev.value[POWER_RATE]);
+		average.value[POWER_TOTAL], stddev.value[POWER_TOTAL]);
 
 #if defined(POWERSTAT_X86)
 	if (opts & OPTS_RAPL) {
@@ -1895,17 +1934,17 @@ void show_help(char *const argv[])
 
 int main(int argc, char * const argv[])
 {
-	double dummy_rate;
 	int sock = -1, ret = EXIT_FAILURE, i;
 	long int run_duration;
-	bool discharging, dummy_inaccurate;
+	bool discharging;
 	struct sigaction new_action;
+	stats_t dummy_stats;
 
 	for (;;) {
 #if defined(POWERSTAT_X86)
-		int c = getopt(argc, argv, "bd:hi:prszSR");
+		int c = getopt(argc, argv, "bd:Dhi:prszSR");
 #else
-		int c = getopt(argc, argv, "bd:hi:prszS");
+		int c = getopt(argc, argv, "bd:Dhi:prszS");
 #endif
 		if (c == -1)
 			break;
@@ -1925,6 +1964,9 @@ int main(int argc, char * const argv[])
 				fprintf(stderr, "Start delay must be 0 or more seconds.\n");
 				exit(EXIT_FAILURE);
 			}
+			break;
+		case 'D':
+			opts |= OPTS_DOMAIN_STATS;
 			break;
 		case 'h':
 			show_help(argv);
@@ -1985,6 +2027,9 @@ int main(int argc, char * const argv[])
 		start_delay = 0;
 	if ((opts & (OPTS_SAMPLE_DELAY | OPTS_RAPL)) == OPTS_RAPL)
 		sample_delay = SAMPLE_DELAY_RAPL;
+
+	if ((opts & OPTS_RAPL) && (rapl_get_domains() < 1))
+		exit(EXIT_FAILURE);
 #endif
 
 	run_duration = MIN_RUN_DURATION + START_DELAY - start_delay;
@@ -2019,7 +2064,7 @@ int main(int argc, char * const argv[])
 		exit(ret);
 	}
 
-	if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
+	if (power_get(&dummy_stats, &discharging) < 0)
 		exit(ret);
 	printf("Running for %.1f seconds (%ld samples at %.1f second intervals).\n",
 			sample_delay * max_readings, max_readings, sample_delay);
@@ -2032,7 +2077,7 @@ int main(int argc, char * const argv[])
 		for (i = 0; i < start_delay; i++) {
 			printf("Waiting %ld seconds before starting (gathering samples). \r", start_delay - i);
 			fflush(stdout);
-			if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
+			if (power_get(&dummy_stats, &discharging) < 0)
 				exit(ret);
 			if (sleep(1) || stop_recv)
 				exit(ret);
@@ -2074,7 +2119,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	if (power_rate_get(&dummy_rate, &discharging, &dummy_inaccurate) < 0)
+	if (power_get(&dummy_stats, &discharging) < 0)
 		goto abort_sock;
 
     	if (monitor(sock) ==  0)
@@ -2091,7 +2136,7 @@ abort:
 			(void)close(sock);
 	}
 #if defined(POWERSTAT_X86)
-	rapl_free_hash();
+	rapl_free_list();
 #endif
 
 	exit(ret);
