@@ -1316,8 +1316,8 @@ static int rapl_get_domains(void)
 			if (fgets(domain_name, sizeof(domain_name), fp) != NULL) {
 				domain_name[strcspn(domain_name, "\n")] = '\0';
 				rapl->domain_name = strdup(domain_name);
-				(void)fclose(fp);
 			}
+			(void)fclose(fp);
 		}
 		if (rapl->domain_name == NULL) {
 			free(rapl->name);
