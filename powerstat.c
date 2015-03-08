@@ -56,6 +56,7 @@
 #define MAX_PIDS		(32769)		/* Hash Max PIDs */
 #define	RATE_ZERO_LIMIT		(0.001)		/* Less than this we call the power rate zero */
 #define IDLE_THRESHOLD		(98)		/* Less than this and we assume the device is not idle */
+#define MAX_RAPL_DOMAINS	(1031)		/* Max RAPL Domains in hash table */
 
 /* Statistics gathered from /proc/stat and process activity */
 #define CPU_USER		(0)
@@ -133,6 +134,16 @@ typedef struct {
 	log_item_t *head;
 	log_item_t *tail;
 } log_t;
+
+/* RAPL domain info */
+typedef struct rapl_info {
+	char *name;
+	double max_energy_uj;
+	double last_energy_uj;
+	struct rapl_info *next;
+} rapl_info_t;
+
+static rapl_info_t *rapl_info[MAX_RAPL_DOMAINS];/* RAPL hash table */
 
 static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
 static long int max_readings;			/* number of samples to gather */
@@ -1179,6 +1190,48 @@ static int power_rate_get_proc_acpi(
 }
 
 #if defined(POWERSTAT_X86)
+
+/*
+ *  rapl_info_hash()
+ *	Hash a rapl name, from Aho, Sethi, Ullman, Compiling Techniques.
+ */
+static inline uint32_t rapl_info_hash(const char *str)
+{
+	uint32_t h = 0;
+
+	while (*str) {
+		uint32_t g;
+		h = (h << 4) + (*str);
+		if (0 != (g = h & 0xf0000000)) {
+			h = h ^ (g >> 24);
+			h = h ^ g;
+		}
+		str++;
+	}
+
+	return h % MAX_RAPL_DOMAINS;
+}
+
+/*
+ *  rapl_free_hash()
+ *	free RAPL hash table
+ */
+void rapl_free_hash(void)
+{
+	uint32_t h;
+
+	for (h = 0; h < MAX_RAPL_DOMAINS; h++) {
+		rapl_info_t *rapl = rapl_info[h];
+
+		while (rapl) {
+			rapl_info_t *next = rapl->next;
+			free(rapl->name);
+			free(rapl);
+			rapl = next;
+		}
+	}
+}
+
 /*
  *  power_get_rapl_domain_names()
  *	get RAPL domain names
@@ -1269,10 +1322,46 @@ static int power_rate_get_rapl(
 		char path[PATH_MAX];
 		FILE *fp;
 		double ujoules;
+		uint32_t hash;
+		rapl_info_t *rapl;
 
 		/* Ignore non Intel RAPL interfaces */
 		if (strncmp(entry->d_name, "intel-rapl", 10))
 			continue;
+
+		/* Get RAPL maximum, we need to check for wrap-arounds, sigh */
+		hash = rapl_info_hash(entry->d_name);
+		for (rapl = rapl_info[hash]; rapl; rapl = rapl->next) {
+			if (!strcmp(entry->d_name, rapl->name))
+				break;
+		}
+		/* Not already cached, then get read it and cache it */
+		if (rapl == NULL) {
+			if ((rapl = calloc(1, sizeof(*rapl))) == NULL) {
+				fprintf(stderr, "Cannot allocate RAPL information.\n");
+				closedir(dir);
+				return -1;
+			}
+			if ((rapl->name = strdup(entry->d_name)) == NULL) {
+				fprintf(stderr, "Cannot allocate RAPL name information.\n");
+				closedir(dir);
+				return -1;
+			}
+			snprintf(path, sizeof(path),
+				"/sys/class/powercap/%s/max_energy_range_uj",
+				entry->d_name);
+
+			rapl->max_energy_uj = 0.0;
+			if ((fp = fopen(path, "r")) != NULL) {
+				if (fscanf(fp, "%lf\n", &rapl->max_energy_uj) != 1)
+					rapl->max_energy_uj = 0.0;
+				fclose(fp);
+			}
+			rapl->next = rapl_info[hash];
+			rapl_info[hash] = rapl;
+
+			printf("%s -> %f\n", rapl->name, rapl->max_energy_uj);
+		}
 
 		snprintf(path, sizeof(path),
 			"/sys/class/powercap/%s/energy_uj",
@@ -1282,11 +1371,12 @@ static int power_rate_get_rapl(
 			continue;
 
 		if (fscanf(fp, "%lf\n", &ujoules) == 1) {
-			/* Bodge this for now on -ve wrap arounds */
-			if (ujoules < 0.0) {
-				*inaccurate = true;
-				ujoules_now = 0.0;
-				break;
+			/* Wrapped around since last time? */
+			if (ujoules - rapl->last_energy_uj < 0.0) {
+				rapl->last_energy_uj = ujoules;
+				ujoules += rapl->max_energy_uj;
+			} else {
+				rapl->last_energy_uj = ujoules;
 			}
 			ujoules_now += ujoules;
 			*discharging = true;
@@ -2000,6 +2090,9 @@ abort:
 		if (sock >= 0)
 			(void)close(sock);
 	}
+#if defined(POWERSTAT_X86)
+	rapl_free_hash();
+#endif
 
 	exit(ret);
 }
