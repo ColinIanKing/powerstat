@@ -147,6 +147,7 @@ typedef struct rapl_info {
 	double max_energy_uj;
 	double last_energy_uj;
 	double t_last;
+	bool is_package;
 	struct rapl_info *next;
 } rapl_info_t;
 
@@ -1251,7 +1252,7 @@ static const char *rapl_get_domain(const int n)
 		rapl = rapl->next;
 	}
 	if (rapl) {
-		if (!strncmp(rapl->domain_name, "package-", 8)) {
+		if (rapl->is_package) {
 			snprintf(buf, sizeof(buf), "pkg-%s", rapl->domain_name + 8);
 			return buf;
 		}
@@ -1325,6 +1326,7 @@ static int rapl_get_domains(void)
 			continue;
 		}
 
+		rapl->is_package = (strncmp(rapl->domain_name, "package-", 8) == 0);
 		rapl->next = rapl_list;
 		rapl_list = rapl;
 		n++;
@@ -1424,7 +1426,8 @@ static int power_get_rapl(
 				rapl_rates[n] =
 					(ujoules - last_energy_uj) / (t_delta * 1000000.0);
 			}
-			stats->value[POWER_TOTAL] += rapl_rates[n];
+			if (rapl->is_package)
+				stats->value[POWER_TOTAL] += rapl_rates[n];
 			stats->value[POWER_DOMAIN_0 + n] = rapl_rates[n];
 			n++;
 			*discharging = true;
