@@ -60,6 +60,10 @@
 #define MAX_POWER_DOMAINS	(16)
 #define MAX_POWER_VALUES	(MAX_POWER_DOMAINS + 1)
 
+/* Histogram specific constants */
+#define MAX_DIVISIONS		(10)
+#define HISTOGRAM_WIDTH		(40)
+
 /* Statistics gathered from /proc/stat and process activity */
 #define CPU_USER		(0)
 #define CPU_NICE		(1)
@@ -90,6 +94,7 @@
 #define OPTS_START_DELAY	(0x0080)	/* -d option used */
 #define OPTS_SAMPLE_DELAY	(0x0100)	/* sample delay has been specified */
 #define OPTS_DOMAIN_STATS	(0x0200)	/* Extra wide power domain stats */
+#define OPTS_HISTOGRAM		(0x0400)	/* Histogram */
 
 #define OPTS_USE_NETLINK	(OPTS_SHOW_PROC_ACTIVITY | \
 				 OPTS_REDO_NETLINK_BUSY |  \
@@ -845,6 +850,76 @@ static void stats_average_stddev_min_max(
 		}
 	}
 }
+
+/*
+ *  stats_power_histogram()
+ *	histogram of power
+ */
+static void stats_power_histogram(
+	const stats_t *const stats,
+	const int num)
+{
+	int i, valid, total = 0, digits = 0, width;
+	double min = 1E6, max = -1E6, division, prev;
+	unsigned int bucket[MAX_DIVISIONS], max_bucket = 0;
+	char buf[32];
+
+	memset(bucket, 0, sizeof(bucket));
+
+	for (valid = 0, i = 0; i < num; i++) {
+		if (!stats[i].inaccurate[POWER_TOTAL]) {
+			if (stats[i].value[POWER_TOTAL] > max)
+				max = stats[i].value[POWER_TOTAL];
+			if (stats[i].value[POWER_TOTAL] < min)
+				min = stats[i].value[POWER_TOTAL];
+			valid++;
+		}
+	}
+
+	if (valid <= 1)
+		return;
+
+	if (max - min == 0) {
+		printf("Range is zero, cannot produce histogram\n");
+		return;
+	}
+	division = ((max * 1.000001) - min) / (MAX_DIVISIONS);
+	for (i = 0; i < num; i++) {
+		if (!stats[i].inaccurate[POWER_TOTAL]) {
+			int v = floor((stats[i].value[POWER_TOTAL] - min) / division);
+			v = v > MAX_DIVISIONS - 1 ? MAX_DIVISIONS -1 : v;
+			bucket[v]++;
+			if (max_bucket < bucket[v])
+				max_bucket = bucket[v];
+		}
+	}
+
+	printf("\nHistogram (of %d power measurements):\n\n", num);
+	snprintf(buf, sizeof(buf), "%.0f", max);
+	digits = strlen(buf) + 4;
+	digits = (digits < 5) ? 5 : digits;
+	width = 3 + (digits * 2);
+	snprintf(buf, sizeof(buf), "%*s%s",
+		(width - 13) / 2, "", "Range (Watts)");
+	printf("%-*s Count\n", width, buf);
+	snprintf(buf, sizeof(buf), "%%%d.3f - %%%d.3f %%5u ",
+		digits, digits);
+
+	prev = min;
+	for (i = 0; i < MAX_DIVISIONS; i++) {
+		unsigned int j;
+
+		total += bucket[i];
+		printf(buf, prev, prev + division - 0.001, bucket[i]);
+
+		for (j = 0; j < HISTOGRAM_WIDTH * bucket[i] / max_bucket; j++)
+			putchar('#');
+		putchar('\n');
+			
+		prev += division;
+	}
+}
+
 
 /*
  *  calc_standard_average()
@@ -1905,6 +1980,8 @@ static int monitor(const int sock)
 		}
 	}
 
+	if (opts & OPTS_HISTOGRAM)
+		stats_power_histogram(stats, readings);
 
 	free(stats);
 	return 0;
@@ -1921,7 +1998,9 @@ void show_help(char *const argv[])
 	printf("usage: %s [-d secs] [-i thresh] [-b|-h|-p|-r|-R|-s|-z] [delay [count]]\n", argv[0]);
 	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
 	printf("\t-d specify delay before starting, default is %ld seconds\n", start_delay);
+	printf("\t-D show RAPL domain power measurements (enables -R option)\n");
 	printf("\t-h show help\n");
+	printf("\t-H show spread of measurements with power histogram\n");
 	printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
 	printf("\t-p redo a sample if we see process fork/exec/exit activity\n");
 	printf("\t-r redo a sample if busy and we see process activity (same as -b -p)\n");
@@ -1945,9 +2024,9 @@ int main(int argc, char * const argv[])
 
 	for (;;) {
 #if defined(POWERSTAT_X86)
-		int c = getopt(argc, argv, "bd:Dhi:prszSR");
+		int c = getopt(argc, argv, "bd:DhHi:prszSR");
 #else
-		int c = getopt(argc, argv, "bd:Dhi:prszS");
+		int c = getopt(argc, argv, "bd:DhHi:prszS");
 #endif
 		if (c == -1)
 			break;
@@ -1969,11 +2048,14 @@ int main(int argc, char * const argv[])
 			}
 			break;
 		case 'D':
-			opts |= OPTS_DOMAIN_STATS;
+			opts |= (OPTS_DOMAIN_STATS | OPTS_RAPL);
 			break;
 		case 'h':
 			show_help(argv);
 			exit(EXIT_SUCCESS);
+		case 'H':
+			opts |= OPTS_HISTOGRAM;
+			break;
 		case 'i':
 			opts |= OPTS_REDO_WHEN_NOT_IDLE;
 			idle_threshold = atof(optarg);

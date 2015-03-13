@@ -54,6 +54,9 @@ enable extra power stats showing all the power domain power readings. This curre
 .B \-h
 show help.
 .TP
+.B \-H
+show histogram of power measurements.
+.TP
 .B \-i threshold
 specify the idle threshold (in % CPU idle) to force a re-sample measurement if the CPU is less idle than this
 level. This option implicitly enables the \-b option.
@@ -62,7 +65,7 @@ level. This option implicitly enables the \-b option.
 redo a sample measurement if any processes fork(), exec() or exit().
 .TP
 .B \-r
-redo if system is not idle and any processes fork(), exec() or exit(), an alias for \-p \-b
+redo if system is not idle and any processes fork(), exec() or exit(), an alias for \-p \-b.
 .TP
 .B \-R
 read power statistics from the RAPL (Running Average Power Limit) domains. This is supported
@@ -108,9 +111,10 @@ Measure power using the Intel RAPL interface:
 powerstat \-R
 .RE
 .LP
-Measure power using the Intel RAPL interface and show extra RAPL domain power readings:
+Measure power using the Intel RAPL interface and show extra RAPL domain power readings and power
+measurement histogram at end of the run
 .RS 8
-powerstat \-RD
+powerstat \-RDH
 .RE
 .LP
 Measure power and redo sampling if less that 95% idle
