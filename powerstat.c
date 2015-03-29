@@ -1455,7 +1455,6 @@ static int power_get_rapl(
 	stats_t *stats,
 	bool *const discharging)
 {
-	double *const rapl_rates = &stats->value[POWER_DOMAIN_0 - POWER_TOTAL];
 	double t_now;
 	static bool first = true;
 	rapl_info_t *rapl;
@@ -1495,15 +1494,14 @@ static int power_get_rapl(
 			}
 
 			if (first || (t_delta <= 0.0)) {
-				rapl_rates[n] = 0.0;
+				stats->value[POWER_DOMAIN_0 + n] = 0.0;
 				stats->inaccurate[POWER_TOTAL] = true;
 			} else {
-				rapl_rates[n] =
+				stats->value[POWER_DOMAIN_0 + n] =
 					(ujoules - last_energy_uj) / (t_delta * 1000000.0);
 			}
 			if (rapl->is_package)
-				stats->value[POWER_TOTAL] += rapl_rates[n];
-			stats->value[POWER_DOMAIN_0 + n] = rapl_rates[n];
+				stats->value[POWER_TOTAL] += stats->value[POWER_DOMAIN_0 + n];
 			n++;
 			*discharging = true;
 		}
