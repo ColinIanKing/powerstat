@@ -787,7 +787,7 @@ static void stats_print(
 	}
 	if (opts & OPTS_DOMAIN_STATS) {
 		for (i = 0; i < power_domains; i++)
-			printf(" %6.1f", s->value[POWER_DOMAIN_0 + i]);
+			printf(" %6.2f", s->value[POWER_DOMAIN_0 + i]);
 	}
 
 	printf("\n");
