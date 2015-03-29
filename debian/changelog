@@ -1,3 +1,20 @@
+powerstat (0.01.36-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Update date in manual
+  * Add more precision to RAPL domain stats
+  * Remove rapl_rates, stash per domain stats directly
+  * Add -H histogram option
+  * Only accumulate RAPL package power for total Watts in -R mode
+  * Move fclose to fix a resource leak
+  * Allow all RAPL power domains to be printed
+  * Prevernt RAPL wrap around the correct way
+  * Handle -ve values from RAPL
+  * Cater for systems (such as VMs) that have RAPL interface but no domains
+  * Add -R RAPL power measurement option
+
+ -- Colin King <colin.king@canonical.com>  Sun, 29 Mar 2015 17:27:00 +0100
+
 powerstat (0.01.35-1) unstable; urgency=medium
 
   * Makefile: bump version
