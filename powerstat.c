@@ -687,14 +687,14 @@ static bool stats_gather(
  */
 static void stats_headings(void)
 {
-	uint8_t i;
-
 	if (opts & OPTS_USE_NETLINK)
 		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts");
 	else
 		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s  Watts");
 
 	if (opts & OPTS_DOMAIN_STATS) {
+		uint8_t i;
+
 		for (i = 0; i < power_domains; i++)
 			printf(" %6.6s",
 				get_domain ? get_domain(i) : "unknown");
@@ -709,14 +709,14 @@ static void stats_headings(void)
  */
 static void stats_ruler(void)
 {
-	uint8_t i;
-
 	if (opts & OPTS_USE_NETLINK)
 		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------");
 	else
 		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ------");
 
 	if (opts & OPTS_DOMAIN_STATS) {
+		uint8_t i;
+
 		for (i = 0; i < power_domains; i++)
 			printf(" ------");
 	}
@@ -748,7 +748,6 @@ static void stats_print(
 	const stats_t *const s)
 {
 	char buf[10];
-	uint8_t i;
 
 	if (summary) {
 		if (s->inaccurate[POWER_TOTAL])
@@ -791,6 +790,8 @@ static void stats_print(
 			buf);
 	}
 	if (opts & OPTS_DOMAIN_STATS) {
+		uint8_t i;
+
 		for (i = 0; i < power_domains; i++)
 			printf(" %6.2f", s->value[POWER_DOMAIN_0 + i]);
 	}
@@ -864,7 +865,7 @@ static void stats_power_histogram(
 	const stats_t *const stats,
 	const int num)
 {
-	int i, valid, total = 0, digits = 0, width;
+	int i, valid, digits = 0, width;
 	double min = 1E6, max = -1E6, division, prev;
 	unsigned int bucket[MAX_DIVISIONS], max_bucket = 0;
 	char buf[32];
@@ -914,7 +915,6 @@ static void stats_power_histogram(
 	for (i = 0; i < MAX_DIVISIONS; i++) {
 		unsigned int j;
 
-		total += bucket[i];
 		printf(buf, prev, prev + division - 0.001, bucket[i]);
 
 		for (j = 0; j < HISTOGRAM_WIDTH * bucket[i] / max_bucket; j++)
