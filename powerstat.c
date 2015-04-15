@@ -46,13 +46,18 @@
 #include <linux/cn_proc.h>
 
 #define MIN_RUN_DURATION	(5*60)		/* We recommend a run of 5 minutes */
+#define MIN_RUN_DURATION_RAPL	(60)		/* RAPL, 60 seconds is enough */
+
 #define SAMPLE_DELAY		(10.0)		/* Delay between samples in seconds */
 #define SAMPLE_DELAY_RAPL	(1.0)		/* Delay between samples for RAPL mode */
+
+#define START_DELAY		(3*60)		/* Delay to wait before sampling */
+#define START_DELAY_RAPL	(0.0)		/* Delay to wait before sampling, RAPL */
+
 #define MIN_SAMPLE_DELAY	(0.5)		/* Minimum sample delay */
 #define ROLLING_AVERAGE_SECS	(120)		/* 2 minute rolling average for power usage calculation */
 #define STANDARD_AVERAGE_SECS	(120)
 #define MAX_MEASUREMENTS 	(ROLLING_AVERAGE_SECS + 10)
-#define START_DELAY		(3*60)		/* Delay to wait before sampling */
 #define MAX_PIDS		(32769)		/* Hash Max PIDs */
 #define	RATE_ZERO_LIMIT		(0.001)		/* Less than this we call the power rate zero */
 #define IDLE_THRESHOLD		(98)		/* Less than this and we assume the device is not idle */
@@ -2106,16 +2111,20 @@ int main(int argc, char * const argv[])
 		}
 	}
 #if defined(POWERSTAT_X86)
+	if ((opts & OPTS_RAPL) && (rapl_get_domains() < 1))
+		exit(EXIT_FAILURE);
 	if ((opts & (OPTS_START_DELAY | OPTS_RAPL)) == OPTS_RAPL)
 		start_delay = 0;
 	if ((opts & (OPTS_SAMPLE_DELAY | OPTS_RAPL)) == OPTS_RAPL)
 		sample_delay = SAMPLE_DELAY_RAPL;
 
-	if ((opts & OPTS_RAPL) && (rapl_get_domains() < 1))
-		exit(EXIT_FAILURE);
-#endif
-
+	if (opts & OPTS_RAPL)
+		run_duration = MIN_RUN_DURATION_RAPL + START_DELAY_RAPL - start_delay;
+	else
+		run_duration = MIN_RUN_DURATION + START_DELAY - start_delay;
+#else
 	run_duration = MIN_RUN_DURATION + START_DELAY - start_delay;
+#endif
 
 	if (optind < argc) {
 		errno = 0;

@@ -40,16 +40,13 @@ processes that have fork'd, exec'd and exited.
 powerstat options are as follow:
 .TP
 .B \-b
-redo a sample measurement if a system is busy, the default for busy is considered less than 98% CPU idle. The
-CPU idle threshold can be altered using the \-i option.
+redo a sample measurement if a system is busy, the default for busy is considered less than 98% CPU idle. The CPU idle threshold can be altered using the \-i option.
 .TP
 .B \-d delay
-specify delay before starting, default is 15 seconds. This gives the machine time to settle down and to 
-dim the laptop display when in idle mode.
+specify delay before starting, default is 180 seconds when running on battery or 0 seconds when using RAPL. This gives the machine time to settle down and for the battery readings to stabilize.
 .TP
 .B \-D
-enable extra power stats showing all the power domain power readings. This currently only applies to the
-\-R RAPL option.
+enable extra power stats showing all the power domain power readings. This currently only applies to the \-R RAPL option.
 .TP
 .B \-h
 show help.
@@ -58,8 +55,7 @@ show help.
 show histogram of power measurements.
 .TP
 .B \-i threshold
-specify the idle threshold (in % CPU idle) to force a re-sample measurement if the CPU is less idle than this
-level. This option implicitly enables the \-b option.
+specify the idle threshold (in % CPU idle) to force a re-sample measurement if the CPU is less idle than this level. This option implicitly enables the \-b option.
 .TP
 .B \-p
 redo a sample measurement if any processes fork(), exec() or exit().
