@@ -75,17 +75,18 @@
 #define CPU_SYS			(2)
 #define CPU_IDLE		(3)
 #define CPU_IOWAIT		(4)
-#define CPU_IRQ			(5)
-#define CPU_SOFTIRQ		(6)
-#define CPU_INTR		(7)
-#define CPU_CTXT		(8)
-#define CPU_PROCS_RUN		(9)
-#define CPU_PROCS_BLK		(10)
-#define PROC_FORK		(11)
-#define PROC_EXEC		(12)
-#define PROC_EXIT		(13)
-#define POWER_TOTAL		(14)
-#define POWER_DOMAIN_0		(15)
+#define CPU_TOTAL		(5)
+#define CPU_IRQ			(6)
+#define CPU_SOFTIRQ		(7)
+#define CPU_INTR		(8)
+#define CPU_CTXT		(9)
+#define CPU_PROCS_RUN		(10)
+#define CPU_PROCS_BLK		(11)
+#define PROC_FORK		(12)
+#define PROC_EXEC		(13)
+#define PROC_EXIT		(14)
+#define POWER_TOTAL		(15)
+#define POWER_DOMAIN_0		(16)
 #define MAX_VALUES		(POWER_DOMAIN_0 + MAX_POWER_VALUES)
 
 /* Arg opt flags */
@@ -666,6 +667,7 @@ static bool stats_gather(
 	 */
 	if (!inaccurate && total <= 0.0)
 		return false;
+	res->value[CPU_TOTAL] = 100.0 * (total - res->value[CPU_IDLE]) / total;
 
 	for (i = 0; (j = indices[i]) != -1; i++) {
 		res->value[j] = (INACCURATE(s1, s2, j) || (total <= 0.0)) ?
@@ -858,12 +860,15 @@ static void stats_average_stddev_min_max(
 }
 
 /*
- *  stats_power_histogram()
- *	histogram of power
+ *  stats_histogram()
+ *	plot a simple ASCII art histogram
  */
-static void stats_power_histogram(
+static void stats_histogram(
 	const stats_t *const stats,
-	const int num)
+	const int num,
+	const int value,
+	const char *title,
+	const char *label)
 {
 	int i, valid, digits = 0, width;
 	double min = 1E6, max = -1E6, division, prev;
@@ -873,11 +878,11 @@ static void stats_power_histogram(
 	memset(bucket, 0, sizeof(bucket));
 
 	for (valid = 0, i = 0; i < num; i++) {
-		if (!stats[i].inaccurate[POWER_TOTAL]) {
-			if (stats[i].value[POWER_TOTAL] > max)
-				max = stats[i].value[POWER_TOTAL];
-			if (stats[i].value[POWER_TOTAL] < min)
-				min = stats[i].value[POWER_TOTAL];
+		if (!stats[i].inaccurate[value]) {
+			if (stats[i].value[value] > max)
+				max = stats[i].value[value];
+			if (stats[i].value[value] < min)
+				min = stats[i].value[value];
 			valid++;
 		}
 	}
@@ -891,8 +896,8 @@ static void stats_power_histogram(
 	}
 	division = ((max * 1.000001) - min) / (MAX_DIVISIONS);
 	for (i = 0; i < num; i++) {
-		if (!stats[i].inaccurate[POWER_TOTAL]) {
-			int v = floor((stats[i].value[POWER_TOTAL] - min) / division);
+		if (!stats[i].inaccurate[value]) {
+			int v = floor((stats[i].value[value] - min) / division);
 			v = v > MAX_DIVISIONS - 1 ? MAX_DIVISIONS -1 : v;
 			bucket[v]++;
 			if (max_bucket < bucket[v])
@@ -900,13 +905,13 @@ static void stats_power_histogram(
 		}
 	}
 
-	printf("\nHistogram (of %d power measurements):\n\n", num);
+	printf(title, num);
 	snprintf(buf, sizeof(buf), "%.0f", max);
 	digits = strlen(buf) + 4;
 	digits = (digits < 5) ? 5 : digits;
 	width = 3 + (digits * 2);
 	snprintf(buf, sizeof(buf), "%*s%s",
-		(width - 13) / 2, "", "Range (Watts)");
+		(width - 13) / 2, "", label);
 	printf("%-*s Count\n", width, buf);
 	snprintf(buf, sizeof(buf), "%%%d.3f - %%%d.3f %%5u ",
 		digits, digits);
@@ -1961,7 +1966,7 @@ static int monitor(const int sock)
 	}
 
 	printf("Summary:\n");
-	printf("%6.2f Watts on Average with Standard Deviation %-6.2f\n",
+	printf("%6.2f Watts on average with standard deviation %-6.2f\n",
 		average.value[POWER_TOTAL], stddev.value[POWER_TOTAL]);
 
 #if defined(POWERSTAT_X86)
@@ -1983,8 +1988,14 @@ static int monitor(const int sock)
 		}
 	}
 
-	if (opts & OPTS_HISTOGRAM)
-		stats_power_histogram(stats, readings);
+	if (opts & OPTS_HISTOGRAM) {
+		stats_histogram(stats, readings, POWER_TOTAL,
+			"\nHistogram (of %d power measurements)\n\n",
+			"Range (Watts)");
+		stats_histogram(stats, readings, CPU_TOTAL,
+			"\nHistogram (of %d CPU utilization measurements)\n\n",
+			"Range (%CPU)");
+	}
 
 	free(stats);
 	return 0;
