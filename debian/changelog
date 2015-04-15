@@ -1,3 +1,13 @@
+powerstat (0.01.37-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Fix typo and update date in man page
+  * Add CPU consumption stats to -H mode
+  * Fix up style warnings from cppcheck
+  * Fix up default start delay duration for RAPL
+
+ -- Colin King <colin.king@canonical.com>  Wed, 15 Apr 2015 12:05:00 +0500
+
 powerstat (0.01.36-1) unstable; urgency=medium
 
   * Makefile: bump version
