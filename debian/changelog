@@ -1,3 +1,11 @@
+powerstat (0.01.38-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Remove signal handling for SIGILL, SIGABRT
+  * Makefile: add copyright
+
+ -- Colin King <colin.king@canonical.com>  Mon, 18 May 2015 18:03:00 +0100
+
 powerstat (0.01.37-1) unstable; urgency=medium
 
   * Makefile: bump version
