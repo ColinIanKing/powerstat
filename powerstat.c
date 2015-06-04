@@ -286,14 +286,10 @@ static inline double timeval_to_double(const struct timeval *const tv)
  *  double_to_timeval
  *	seconds in double to timeval
  */
-static inline struct timeval double_to_timeval(const double val)
+static inline void double_to_timeval(const double val, struct timeval *tv)
 {
-	struct timeval tv;
-
-	tv.tv_sec = val;
-	tv.tv_usec = (val - (time_t)val) * 1000000.0;
-
-	return tv;
+	tv->tv_sec = val;
+	tv->tv_usec = (val - (time_t)val) * 1000000.0;
 }
 
 /*
@@ -1759,7 +1755,9 @@ static int monitor(const int sock)
 		secs = time_start + ((double)t * sample_delay) - time_now;
 
 		if (secs > 0.0) {
-			struct timeval tv = double_to_timeval(secs);
+			struct timeval tv;
+
+			double_to_timeval(secs, &tv);
 
 			if (opts & OPTS_USE_NETLINK) {
 				fd_set readfds;
