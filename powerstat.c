@@ -45,24 +45,24 @@
 #include <linux/netlink.h>
 #include <linux/cn_proc.h>
 
-#define MIN_RUN_DURATION	(5*60)		/* We recommend a run of 5 minutes */
-#define MIN_RUN_DURATION_RAPL	(60)		/* RAPL, 60 seconds is enough */
+#define MIN_RUN_DURATION	(5*60)	/* We recommend a run of 5 minutes */
+#define MIN_RUN_DURATION_RAPL	(60)	/* RAPL, 60 seconds is enough */
 
-#define SAMPLE_DELAY		(10.0)		/* Delay between samples in seconds */
-#define SAMPLE_DELAY_RAPL	(1.0)		/* Delay between samples for RAPL mode */
+#define SAMPLE_DELAY		(10.0)	/* Delay between samples in seconds */
+#define SAMPLE_DELAY_RAPL	(1.0)	/* Delay between samples for RAPL mode */
 
-#define START_DELAY		(3*60)		/* Delay to wait before sampling */
-#define START_DELAY_RAPL	(0.0)		/* Delay to wait before sampling, RAPL */
+#define START_DELAY		(3*60)	/* Delay to wait before sampling */
+#define START_DELAY_RAPL	(0.0)	/* Delay to wait before sampling, RAPL */
 
-#define MIN_SAMPLE_DELAY	(0.5)		/* Minimum sample delay */
-#define ROLLING_AVERAGE_SECS	(120)		/* 2 minute rolling average for power usage calculation */
+#define MIN_SAMPLE_DELAY	(0.5)	/* Minimum sample delay */
+#define ROLLING_AVERAGE_SECS	(120)	/* 2 minute rolling average for power calculation */
 #define STANDARD_AVERAGE_SECS	(120)
 #define MAX_MEASUREMENTS 	(ROLLING_AVERAGE_SECS + 10)
-#define MAX_PIDS		(32769)		/* Hash Max PIDs */
-#define	RATE_ZERO_LIMIT		(0.001)		/* Less than this we call the power rate zero */
-#define IDLE_THRESHOLD		(98)		/* Less than this and we assume the device is not idle */
+#define MAX_PIDS		(32769)	/* Hash Max PIDs */
+#define	RATE_ZERO_LIMIT		(0.001)	/* Less than this we call the power rate zero */
+#define IDLE_THRESHOLD		(98)	/* Less than this and we assume the device is not idle */
 
-#define MAX_POWER_DOMAINS	(16)
+#define MAX_POWER_DOMAINS	(16)	/* Maximum number of power domains allowed */
 #define MAX_POWER_VALUES	(MAX_POWER_DOMAINS + 1)
 
 /* Histogram specific constants */
@@ -122,44 +122,44 @@
 
 /* Measurement entry */
 typedef struct {
-	double	value;		/* Measurement value */
-	time_t	when;		/* When it was measured */
+	double	value;			/* Measurement value */
+	time_t	when;			/* When it was measured */
 } measurement_t;
 
 
 /* Statistics entry */
 typedef struct {
-	double	value[MAX_VALUES];
-	bool	inaccurate[MAX_VALUES];
+	double	value[MAX_VALUES];	/* /proc/stats values */
+	bool	inaccurate[MAX_VALUES];	/* True if not accurate reading */
 } stats_t;
 
 /* /proc info cache */
 typedef struct {
-	pid_t	pid;		/* Process ID */
-	char	*cmdline;	/* /proc/pid/cmdline text */
+	pid_t	pid;			/* Process ID */
+	char	*cmdline;		/* /proc/pid/cmdline text */
 } proc_info_t;
 
 /* Log item link list */
 typedef struct log_item_t {
-	struct log_item_t *next;
-	char *text;
+	struct log_item_t *next;	/* Next log item */
+	char *text;			/* Log text */
 } log_item_t;
 
 /* Log list header */
 typedef struct {
-	log_item_t *head;
-	log_item_t *tail;
+	log_item_t *head;		/* List head */
+	log_item_t *tail;		/* List tail */
 } log_t;
 
 /* RAPL domain info */
 typedef struct rapl_info {
-	char *name;
-	char *domain_name;
-	double max_energy_uj;
-	double last_energy_uj;
-	double t_last;
-	bool is_package;
-	struct rapl_info *next;
+	char *name;			/* RAPL name */
+	char *domain_name;		/* RAPL domain name */
+	double max_energy_uj;		/* Energy in micro Joules */
+	double last_energy_uj;		/* Last energy reading in micro Joules */
+	double t_last;			/* Time of last reading */
+	bool is_package;		/* Is it a package? */
+	struct rapl_info *next;		/* Next RAPL domain */
 } rapl_info_t;
 
 static rapl_info_t *rapl_list = NULL;
@@ -2195,7 +2195,6 @@ int main(int argc, char * const argv[])
 		}
 		(void)siginterrupt(signals[i], 1);
 	}
-
 
 	log_init();
 	if (opts & OPTS_USE_NETLINK) {
