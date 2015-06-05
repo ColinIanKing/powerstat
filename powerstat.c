@@ -71,24 +71,26 @@
 #define HISTOGRAM_WIDTH		(40)
 
 /* Statistics gathered from /proc/stat and process activity */
-#define CPU_USER		(0)
-#define CPU_NICE		(1)
-#define CPU_SYS			(2)
-#define CPU_IDLE		(3)
-#define CPU_IOWAIT		(4)
-#define CPU_TOTAL		(5)
-#define CPU_IRQ			(6)
-#define CPU_SOFTIRQ		(7)
-#define CPU_INTR		(8)
-#define CPU_CTXT		(9)
-#define CPU_PROCS_RUN		(10)
-#define CPU_PROCS_BLK		(11)
-#define PROC_FORK		(12)
-#define PROC_EXEC		(13)
-#define PROC_EXIT		(14)
-#define POWER_TOTAL		(15)
-#define POWER_DOMAIN_0		(16)
-#define MAX_VALUES		(POWER_DOMAIN_0 + MAX_POWER_VALUES)
+typedef enum {
+	CPU_USER = 0,
+	CPU_NICE,
+	CPU_SYS,
+	CPU_IDLE,
+	CPU_IOWAIT,
+	CPU_TOTAL,
+	CPU_IRQ	,
+	CPU_SOFTIRQ,
+	CPU_INTR,
+	CPU_CTXT,
+	CPU_PROCS_RUN,
+	CPU_PROCS_BLK,
+	PROC_FORK,
+	PROC_EXEC,
+	PROC_EXIT,
+	POWER_TOTAL,
+	POWER_DOMAIN_0,
+	MAX_VALUES = POWER_DOMAIN_0 + MAX_POWER_VALUES
+} stat_type;
 
 /* Arg opt flags */
 #define OPTS_SHOW_PROC_ACTIVITY	(0x0001)	/* dump out process activity */
@@ -126,7 +128,6 @@ typedef struct {
 	double	value;			/* Measurement value */
 	time_t	when;			/* When it was measured */
 } measurement_t;
-
 
 /* Statistics entry */
 typedef struct {
@@ -281,7 +282,6 @@ static inline double timeval_to_double(const struct timeval *const tv)
 {
 	return (double)tv->tv_sec + ((double)tv->tv_usec / 1000000.0);
 }
-
 
 /*
  *  double_to_timeval
@@ -535,7 +535,7 @@ static int stats_read(stats_t *const stats)
 	char buf[4096];
 	int i, j;
 
-	static int indices[] = {
+	static stat_type indices[] = {
 		CPU_USER, CPU_NICE, CPU_SYS, CPU_IDLE,
 		CPU_IOWAIT, CPU_IRQ, CPU_SOFTIRQ, CPU_CTXT,
 		CPU_INTR, CPU_PROCS_RUN, CPU_PROCS_BLK, -1
