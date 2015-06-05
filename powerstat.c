@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #include <string.h>
 #include <unistd.h>
@@ -164,13 +165,13 @@ typedef struct rapl_info {
 
 static rapl_info_t *rapl_list = NULL;
 static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
-static long int max_readings;			/* number of samples to gather */
+static uint32_t max_readings;			/* number of samples to gather */
 static double sample_delay = SAMPLE_DELAY;	/* time between each sample in secs */
-static long int start_delay = START_DELAY;	/* seconds before we start displaying stats */
+static int32_t start_delay = START_DELAY;	/* seconds before we start displaying stats */
 static double idle_threshold = IDLE_THRESHOLD;	/* lower than this and the CPU is busy */
 static log_t infolog;				/* log */
-static int opts;				/* opt arg opt flags */
-static volatile int stop_recv;			/* sighandler stop flag */
+static uint32_t opts;				/* opt arg opt flags */
+static volatile bool stop_recv;			/* sighandler stop flag */
 static bool power_calc_from_capacity = false;	/* true of power is calculated via capacity change */
 static const char *app_name = "powerstat";	/* name of application */
 static const char *(*get_domain)(const int i) = NULL;
@@ -419,7 +420,7 @@ static void log_free(void)
 static void handle_sig(int dummy)
 {
 	(void)dummy;
-	stop_recv = 1;
+	stop_recv = true;
 }
 
 /*
@@ -2003,7 +2004,7 @@ void show_help(char *const argv[])
 	printf("%s, version %s\n\n", app_name, VERSION);
 	printf("usage: %s [-d secs] [-i thresh] [-b|-h|-p|-r|-R|-s|-z] [delay [count]]\n", argv[0]);
 	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
-	printf("\t-d specify delay before starting, default is %ld seconds\n", start_delay);
+	printf("\t-d specify delay before starting, default is %" PRId32 " seconds\n", start_delay);
 	printf("\t-D show RAPL domain power measurements (enables -R option)\n");
 	printf("\t-h show help\n");
 	printf("\t-H show spread of measurements with power histogram\n");
@@ -2161,16 +2162,16 @@ int main(int argc, char * const argv[])
 
 	if (power_get(&dummy_stats, &discharging) < 0)
 		exit(ret);
-	printf("Running for %.1f seconds (%ld samples at %.1f second intervals).\n",
+	printf("Running for %.1f seconds (%" PRIu32 " samples at %.1f second intervals).\n",
 			sample_delay * max_readings, max_readings, sample_delay);
-	printf("Power measurements will start in %ld seconds time.\n",
+	printf("Power measurements will start in %" PRId32 " seconds time.\n",
 		start_delay);
 	printf("\n");
 
 	if (start_delay > 0) {
 		/* Gather up initial data */
 		for (i = 0; i < start_delay; i++) {
-			printf("Waiting %ld seconds before starting (gathering samples). \r", start_delay - i);
+			printf("Waiting %" PRId32 " seconds before starting (gathering samples). \r", start_delay - i);
 			fflush(stdout);
 			if (power_get(&dummy_stats, &discharging) < 0)
 				exit(ret);
