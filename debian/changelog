@@ -1,3 +1,16 @@
+powerstat (0.01.39-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Ensure we scan a buffer correctly
+  * Add -c "C-state" option
+  * Make statistics #defines into a stat_type enumeration
+  * Specify integer types with stdint int types
+  * Clean up comments, add more comments where necessary
+  * pass tv into double_to_timeval rather than returning a timeval struct
+  * Remove "Battery" from message since we can measure using RAPL
+
+ -- Colin King <colin.king@canonical.com>  Sun, 7 Jun 2015 19:50:00 +0100
+
 powerstat (0.01.38-1) unstable; urgency=medium
 
   * Makefile: bump version
