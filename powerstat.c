@@ -92,6 +92,49 @@ typedef enum {
 	MAX_VALUES = POWER_DOMAIN_0 + MAX_POWER_VALUES
 } stat_type;
 
+/*
+ *  C-State information, 1 for each unique C-state
+ */
+typedef struct cpu_state {
+	char 		*name;		/* C-State name, e.g. C1E-IVB */
+	char		*name_short;	/* short name, e.g. C1E */
+	uint64_t	latency;	/* latency */
+	uint64_t	usage_total;	/* total usage count */
+	double		resident;	/* percentage time resident in this state */
+	struct cpu_state *hash_next;	/* next in hash table */
+	struct cpu_state *list_next;	/* linked list of C-states */
+	struct cpu_info  *cpu_info_list; /* linked list of CPUs that have this state */
+} cpu_state_t;
+
+/*
+ * Per CPU C-State info, total of these are
+ * N-CPUs x N-CPU states
+ */
+typedef struct cpu_info {
+	uint32_t	cpu_id;		/* CPU ID */
+	char		*state;		/* C-State sysfs name, e.g 'state2' */
+	cpu_state_t 	*cpu_state;	/* C-State info */
+	double		prev_tod;	/* Previous Time-of-Day */
+	double		tod;		/* Time of Day */
+	double		tod_diff;	/* Difference between current and previous tod */
+	uint64_t	prev_time;	/* Previous #microseconds in this C-state */
+	uint64_t	time;		/* Current #microseconds in this C-state */
+	uint64_t	time_diff;	/* Difference in microseconds in this C-state */
+	uint64_t	prev_usage;	/* Previous usage count */
+	uint64_t	usage;		/* Current usage count */
+	uint64_t	usage_diff;	/* Difference in usage count */
+	struct cpu_info	*hash_next;	/* Next in hash table */
+	struct cpu_info *list_next;	/* Next in list of cpu_infos list */
+} cpu_info_t;
+
+#define MAX_STATES	(67)
+#define MAX_CPUS	(1031)
+
+static cpu_state_t	*cpu_states_list;	/* List of all CPU-states */
+static cpu_state_t	*cpu_states[MAX_STATES];/* Hash of all CPU-states */
+static cpu_info_t	*cpu_info[MAX_CPUS];	/* Hash of all CPU infos */
+static const char *cpu_path = "/sys/devices/system/cpu";
+
 /* Arg opt flags */
 #define OPTS_SHOW_PROC_ACTIVITY	(0x0001)	/* dump out process activity */
 #define OPTS_REDO_NETLINK_BUSY	(0x0002)	/* tasks fork/exec/exit */
@@ -104,6 +147,7 @@ typedef enum {
 #define OPTS_SAMPLE_DELAY	(0x0100)	/* sample delay has been specified */
 #define OPTS_DOMAIN_STATS	(0x0200)	/* Extra wide power domain stats */
 #define OPTS_HISTOGRAM		(0x0400)	/* Histogram */
+#define OPTS_CSTATES		(0x0800)	/* C-STATES dump */
 
 #define OPTS_USE_NETLINK	(OPTS_SHOW_PROC_ACTIVITY | \
 				 OPTS_REDO_NETLINK_BUSY |  \
@@ -916,7 +960,6 @@ static void stats_histogram(
 		for (j = 0; j < HISTOGRAM_WIDTH * bucket[i] / max_bucket; j++)
 			putchar('#');
 		putchar('\n');
-			
 		prev += division;
 	}
 }
@@ -1556,6 +1599,264 @@ static int power_get(
 }
 
 /*
+ *  pjw()
+ *	Hash a string, from Aho, Sethi, Ullman, Compiling Techniques.
+ */
+static uint32_t pjw(const char *str, const uint32_t id)
+{
+	uint32_t h = id * 173;
+
+	while (*str) {
+		uint32_t g;
+		h = (h << 4) + (*str);
+		if (0 != (g = h & 0xf0000000)) {
+			h = h ^ (g >> 24);
+			h = h ^ g;
+		}
+		str++;
+	}
+	return h;
+}
+
+static cpu_state_t *cpu_state_get(const char *name)
+{
+	uint32_t h = pjw(name, 0) % MAX_STATES;
+	cpu_state_t *s = cpu_states[h];
+	size_t len;
+	char *ptr;
+
+	while (s) {
+		if (!strcmp(s->name, name))
+			return s;
+		s = s->hash_next;
+	}
+	if ((s = calloc(1, sizeof(cpu_state_t))) == NULL)
+		return NULL;
+	if ((s->name = strdup(name)) == NULL) {
+		free(s);
+		return NULL;
+	}
+	if ((ptr = index(name, '-')) == NULL)
+		len = strlen(name);
+	else
+		len = ptr - name;
+	if ((s->name_short = calloc(1, len + 1)) == NULL) {
+		free(s->name);
+		free(s);
+		return NULL;
+	}
+	strncpy(s->name_short, name, len + 1);
+	s->name_short[len] = '\0';
+	s->hash_next = cpu_states[h];
+	cpu_states[h] = s;
+	s->list_next = cpu_states_list;
+	cpu_states_list = s;
+
+	return s;
+}
+
+static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
+{
+	uint32_t h = pjw(state, cpu_id) % MAX_CPUS;
+	cpu_info_t *ci = cpu_info[h];
+	FILE *fp;
+	char path[PATH_MAX];
+	char buffer[64];
+
+	while (ci) {
+		if ((ci->cpu_id == cpu_id) &&
+		    !strcmp(ci->state, state))
+			return ci;
+		ci = ci->hash_next;
+	}
+
+	if ((ci = calloc(1, sizeof(cpu_info_t))) == NULL)
+		return NULL;
+	ci->cpu_id = cpu_id;
+	if ((ci->state = strdup(state)) == NULL) {
+		free(ci);
+		return NULL;
+	}
+
+	snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/name",
+		cpu_path, cpu_id, state);
+
+	if ((fp = fopen(path, "r")) != NULL) {
+		fscanf(fp, "%63s", buffer);
+		fclose(fp);
+	} else {
+		strncpy(buffer, state, sizeof(buffer));
+	}
+	if ((ci->cpu_state = cpu_state_get(buffer)) == NULL) {
+		free(ci->state);
+		free(ci);
+		return NULL;
+	}
+	if (!ci->cpu_state->latency) {
+		uint64_t val;
+		snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/latency",
+			cpu_path, cpu_id, state);
+		if ((fp = fopen(path, "r")) != NULL) {
+			if (fscanf(fp, "%" SCNu64, &val) == 1)
+				ci->cpu_state->latency = val;
+			fclose(fp);
+		}
+	}
+
+	ci->prev_time = 0;
+	ci->time = 0;
+	ci->hash_next = cpu_info[h];
+	cpu_info[h] = ci;
+
+	ci->list_next = ci->cpu_state->cpu_info_list;
+	ci->cpu_state->cpu_info_list = ci;
+	return ci;
+}
+
+static int cpu_info_update(cpu_info_t *ci)
+{
+	char path[PATH_MAX];
+	FILE *fp;
+	uint64_t val;
+
+	snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/time",
+		cpu_path, ci->cpu_id, ci->state);
+	ci->prev_time = ci->time;
+	ci->time = 0;
+	if ((fp = fopen(path, "r")) != NULL) {
+		if (fscanf(fp, "%" SCNu64, &val) == 1)
+			ci->time = val;
+		fclose(fp);
+	}
+	ci->time_diff = ci->time - ci->prev_time;
+
+	snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/usage",
+		cpu_path, ci->cpu_id, ci->state);
+	ci->prev_usage = ci->usage;
+	ci->usage = 0;
+	if ((fp = fopen(path, "r")) != NULL) {
+		if (fscanf(fp, "%" SCNu64, &val) == 1)
+			ci->usage = val;
+		fclose(fp);
+	}
+	ci->usage_diff = ci->usage - ci->prev_usage;
+
+	ci->prev_tod = ci->tod;
+	ci->tod = gettime_to_double();
+	ci->tod_diff = ci->tod - ci->prev_tod;
+
+	return 0;
+}
+
+static void cpu_states_update(void)
+{
+	struct dirent **cpu_list;
+	int i, n_cpus;
+	uint32_t max_cpu_id = 0;
+
+	n_cpus = scandir(cpu_path, &cpu_list, NULL, alphasort);
+
+	for (i = 0; i < n_cpus; i++) {
+		char *name = cpu_list[i]->d_name;
+		uint32_t cpu_id;
+
+		if (strlen(name) > 3 &&
+		    !strncmp(name, "cpu", 3) &&
+		    isdigit(name[3])) {
+			int j, n_states;
+			cpu_id = atoi(name + 3);
+			char path[PATH_MAX];
+			struct dirent **states_list;
+
+			if (max_cpu_id < cpu_id)
+				max_cpu_id = cpu_id;
+
+			snprintf(path, sizeof(path), "%s/%s/cpuidle", cpu_path, name);
+
+			n_states = scandir(path, &states_list, NULL, alphasort);
+			for (j = 0; j < n_states; j++) {
+				char *sname = states_list[j]->d_name;
+
+				if (!strncmp("state", sname, 5)) {
+					cpu_info_t *info;
+					info = cpu_info_get(states_list[j]->d_name, cpu_id);
+					if (info)
+						cpu_info_update(info);
+				}
+				free(states_list[j]);
+			}
+			free(states_list);
+		}
+		free(cpu_list[i]);
+	}
+	free(cpu_list);
+}
+
+static void cpu_states_free(void)
+{
+	cpu_state_t *s = cpu_states_list;
+
+	while (s) {
+		cpu_state_t *s_next = s->list_next;
+		cpu_info_t *ci = s->cpu_info_list;
+
+		while (ci) {
+			cpu_info_t *ci_next = ci->list_next;
+
+			free(ci->state);
+			free(ci);
+			ci = ci_next;
+		}
+		free(s->name);
+		free(s->name_short);
+		free(s);
+
+		s = s_next;
+	}
+}
+
+static void cpu_states_dump(void)
+{
+	cpu_state_t *s;
+	double c0_percent = 100.0;
+	bool c0 = false;
+
+	if (!cpu_states_list)
+		return;
+
+	for (s = cpu_states_list; s; s = s->list_next) {
+		cpu_info_t *ci;
+		uint64_t state_total = 0;
+		double time_total = 0;
+
+		for (ci = s->cpu_info_list; ci; ci = ci->list_next) {
+			state_total += ci->time_diff;
+			time_total += ci->tod_diff;
+			s->usage_total += ci->usage_diff;
+		}
+		/* time_total into microseconds */
+		time_total *= 1000000.0;
+		s->resident = 100.0 * (double)state_total / (double)time_total;
+		c0_percent -= s->resident;
+
+		if (!strcmp(s->name_short, "C0"))
+			c0 = true;
+	}
+
+	if (c0_percent >= 0.0) {
+		printf("\n%-10s %7s %10s %-8s\n",
+			"C-State", "Resident", "Count", "Latency");
+		for (s = cpu_states_list; s; s = s->list_next)
+			printf("%-10s %7.3f%% %10" PRIu64 "%8" PRIu64 "\n",
+				s->name, s->resident, s->usage_total, s->latency);
+		if (!c0)
+			printf("%-10s %7.3f%%\n", "C0", c0_percent);
+	} else {
+		printf("\nUntrustworthy C-State states, ignoring.\n");
+	}
+}
+
+/*
  *  proc_info_hash()
  * 	hash on PID
  */
@@ -1743,6 +2044,8 @@ static int monitor(const int sock)
 		free(stats);
 		return -1;
 	}
+	if (opts & OPTS_CSTATES)
+		cpu_states_update();
 
 	while (!stop_recv && (readings < max_readings)) {
 		double time_now, secs;
@@ -1941,6 +2244,8 @@ static int monitor(const int sock)
 			}
         	}
 	}
+	if (opts & OPTS_CSTATES)
+		cpu_states_update();
 
 	/*
 	 * Stats now gathered, calculate averages, stddev,
@@ -1981,6 +2286,9 @@ static int monitor(const int sock)
 		}
 	}
 
+	if (opts & OPTS_CSTATES)
+		cpu_states_dump();
+
 	if (opts & OPTS_HISTOGRAM) {
 		stats_histogram(stats, readings, POWER_TOTAL,
 			"\nHistogram (of %d power measurements)\n\n",
@@ -2004,6 +2312,7 @@ void show_help(char *const argv[])
 	printf("%s, version %s\n\n", app_name, VERSION);
 	printf("usage: %s [-d secs] [-i thresh] [-b|-h|-p|-r|-R|-s|-z] [delay [count]]\n", argv[0]);
 	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
+	printf("\t-c show C-State statistics at end of the run\n");
 	printf("\t-d specify delay before starting, default is %" PRId32 " seconds\n", start_delay);
 	printf("\t-D show RAPL domain power measurements (enables -R option)\n");
 	printf("\t-h show help\n");
@@ -2031,9 +2340,9 @@ int main(int argc, char * const argv[])
 
 	for (;;) {
 #if defined(POWERSTAT_X86)
-		int c = getopt(argc, argv, "bd:DhHi:prszSR");
+		int c = getopt(argc, argv, "bd:cDhHi:prszSR");
 #else
-		int c = getopt(argc, argv, "bd:DhHi:prszS");
+		int c = getopt(argc, argv, "bd:cDhHi:prszS");
 #endif
 		if (c == -1)
 			break;
@@ -2053,6 +2362,9 @@ int main(int argc, char * const argv[])
 				fprintf(stderr, "Start delay must be 0 or more seconds.\n");
 				exit(EXIT_FAILURE);
 			}
+			break;
+		case 'c':
+			opts |= OPTS_CSTATES;
 			break;
 		case 'D':
 			opts |= (OPTS_DOMAIN_STATS | OPTS_RAPL);
@@ -2233,6 +2545,8 @@ abort:
 #if defined(POWERSTAT_X86)
 	rapl_free_list();
 #endif
+	if (opts & OPTS_CSTATES)
+		cpu_states_free();
 
 	exit(ret);
 }

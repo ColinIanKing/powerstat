@@ -42,6 +42,9 @@ powerstat options are as follow:
 .B \-b
 redo a sample measurement if a system is busy, the default for busy is considered less than 98% CPU idle. The CPU idle threshold can be altered using the \-i option.
 .TP
+.B \-c
+gather CPU C-state activity and show the % time and count in each C-state at the end of the run. 
+.TP
 .B \-d delay
 specify delay before starting, default is 180 seconds when running on battery or 0 seconds when using RAPL. This gives the machine time to settle down and for the battery readings to stabilize.
 .TP
