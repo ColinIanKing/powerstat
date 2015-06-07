@@ -1681,11 +1681,13 @@ static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
 	snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/name",
 		cpu_path, cpu_id, state);
 
+	memset(buffer, 0, sizeof(buffer));
 	if ((fp = fopen(path, "r")) != NULL) {
-		fscanf(fp, "%63s", buffer);
+		if (fscanf(fp, "%63s", buffer) != 1)
+			strncpy(buffer, "unknown", sizeof(buffer) - 1);
 		fclose(fp);
 	} else {
-		strncpy(buffer, state, sizeof(buffer));
+		strncpy(buffer, state, sizeof(buffer) - 1);
 	}
 	if ((ci->cpu_state = cpu_state_get(buffer)) == NULL) {
 		free(ci->state);
@@ -1758,15 +1760,14 @@ static void cpu_states_update(void)
 
 	for (i = 0; i < n_cpus; i++) {
 		char *name = cpu_list[i]->d_name;
-		uint32_t cpu_id;
 
 		if (strlen(name) > 3 &&
 		    !strncmp(name, "cpu", 3) &&
 		    isdigit(name[3])) {
 			int j, n_states;
-			cpu_id = atoi(name + 3);
 			char path[PATH_MAX];
 			struct dirent **states_list;
+			uint32_t cpu_id = atoi(name + 3);
 
 			if (max_cpu_id < cpu_id)
 				max_cpu_id = cpu_id;
