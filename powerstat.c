@@ -228,7 +228,9 @@ typedef struct rapl_info {
 	struct rapl_info *next;		/* Next RAPL domain */
 } rapl_info_t;
 
+#if defined(POWERSTAT_X86)
 static rapl_info_t *rapl_list = NULL;
+#endif
 static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
 static uint32_t max_readings;			/* number of samples to gather */
 static double sample_delay = SAMPLE_DELAY;	/* time between each sample in secs */
@@ -2125,7 +2127,7 @@ static int monitor(const int sock)
 	ssize_t len;
 	int64_t t = 1;
 	int redone = 0, row = 0;
-	long int readings = 0;
+	uint32_t readings = 0;
 	stats_t *stats, s1, s2, average, stddev, min, max;
 	struct nlmsghdr *nlmsghdr;
 	double time_start;
