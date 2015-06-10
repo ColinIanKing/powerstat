@@ -65,6 +65,10 @@ show histogram of power measurements.
 .B \-i threshold
 specify the idle threshold (in % CPU idle) to force a re-sample measurement if the CPU is less idle than this level. This option implicitly enables the \-b option.
 .TP
+.B \-n
+no headings. Column headings are printed when they scroll off the terminal; this option disables this and allows one to capture the output and parse the data
+without the need to filter out the headings.
+.TP
 .B \-p
 redo a sample measurement if any processes fork(), exec() or exit().
 .TP

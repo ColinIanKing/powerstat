@@ -167,6 +167,7 @@ static const char *cpu_path = "/sys/devices/system/cpu";
 #define OPTS_HISTOGRAM		(0x0400)	/* Histogram */
 #define OPTS_CSTATES		(0x0800)	/* C-STATES dump */
 #define OPTS_CPU_FREQ		(0x1000)	/* Average CPU frequency */
+#define OPTS_NO_STATS_HEADINGS	(0x2000)	/* No stats headings */
 
 #define OPTS_USE_NETLINK	(OPTS_SHOW_PROC_ACTIVITY | \
 				 OPTS_REDO_NETLINK_BUSY |  \
@@ -869,12 +870,14 @@ static void stats_ruler(void)
  */
 static void row_increment(int *const row)
 {
-	int tty_rows = tty_height();
+	if (!(opts & OPTS_NO_STATS_HEADINGS)) {
+		int tty_rows = tty_height();
 
-	(*row)++;
-	if ((tty_rows > 2) && (*row >= tty_rows)) {
-		stats_headings();
-		*row = 2;
+		(*row)++;
+		if ((tty_rows > 2) && (*row >= tty_rows)) {
+			stats_headings();
+			*row = 2;
+		}
 	}
 }
 
@@ -2425,6 +2428,7 @@ void show_help(char *const argv[])
 	printf("\t-h show help\n");
 	printf("\t-H show spread of measurements with power histogram\n");
 	printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
+	printf("\t-n no printing of table heading when screen scrolls\n");
 	printf("\t-p redo a sample if we see process fork/exec/exit activity\n");
 	printf("\t-r redo a sample if busy and we see process activity (same as -b -p)\n");
 #if defined(POWERSTAT_X86)
@@ -2447,9 +2451,9 @@ int main(int argc, char * const argv[])
 
 	for (;;) {
 #if defined(POWERSTAT_X86)
-		int c = getopt(argc, argv, "bd:cDfhHi:prszSR");
+		int c = getopt(argc, argv, "bd:cDfhHi:nprszSR");
 #else
-		int c = getopt(argc, argv, "bd:cDfhHi:prszS");
+		int c = getopt(argc, argv, "bd:cDfhHi:nprszS");
 #endif
 		if (c == -1)
 			break;
@@ -2492,6 +2496,9 @@ int main(int argc, char * const argv[])
 				fprintf(stderr, "Idle threshold must be between 0..99.99.\n");
 				exit(EXIT_FAILURE);
 			}
+			break;
+		case 'n':
+			opts |= OPTS_NO_STATS_HEADINGS;
 			break;
 		case 'p':
 			opts |= OPTS_REDO_NETLINK_BUSY;
