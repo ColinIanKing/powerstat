@@ -661,7 +661,8 @@ static void stats_cpu_freq_read(stats_t *const stats)
 		}
 		free(cpu_list[i]);
 	}
-	free(cpu_list);
+	if (n_cpus > -1)
+		free(cpu_list);
 	stats->value[CPU_FREQ] = n > 0.0 ? total_freq / n : 0;
 }
 
@@ -1867,7 +1868,6 @@ static void cpu_states_update(void)
 	uint32_t max_cpu_id = 0;
 
 	n_cpus = scandir(cpu_path, &cpu_list, NULL, alphasort);
-
 	for (i = 0; i < n_cpus; i++) {
 		char *name = cpu_list[i]->d_name;
 
@@ -1896,11 +1896,13 @@ static void cpu_states_update(void)
 				}
 				free(states_list[j]);
 			}
-			free(states_list);
+			if (n_states > -1)
+				free(states_list);
 		}
 		free(cpu_list[i]);
 	}
-	free(cpu_list);
+	if (n_cpus > -1)
+		free(cpu_list);
 }
 
 static void cpu_states_free(void)
