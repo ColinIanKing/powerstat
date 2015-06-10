@@ -33,6 +33,7 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <math.h>
+#include <float.h>
 #include <time.h>
 #include <getopt.h>
 
@@ -968,8 +969,8 @@ static void stats_average_stddev_min_max(
 	for (j = 0; j < MAX_VALUES; j++) {
 		double total = 0.0;
 
-		max->value[j] = -1E99;
-		min->value[j] = 1E99;
+		max->value[j] = -DBL_MAX;
+		min->value[j] = DBL_MAX;
 
 		for (valid = 0, i = 0; i < num; i++) {
 			if (!stats[i].inaccurate[j]) {
@@ -1014,14 +1015,15 @@ static void stats_average_stddev_min_max(
  *	plot a simple ASCII art histogram
  */
 static void stats_histogram(
-	const stats_t *const stats,
+	stats_t *const stats,
 	const int num,
 	const int value,
 	const char *title,
-	const char *label)
+	const char *label,
+	const double scale)
 {
 	int i, valid, digits = 0, width;
-	double min = 1E6, max = -1E6, division, prev;
+	double min = DBL_MAX, max = -DBL_MAX, division, prev;
 	unsigned int bucket[MAX_DIVISIONS], max_bucket = 0;
 	char buf[32];
 
@@ -1029,6 +1031,7 @@ static void stats_histogram(
 
 	for (valid = 0, i = 0; i < num; i++) {
 		if (!stats[i].inaccurate[value]) {
+			stats[i].value[value] /= scale;
 			if (stats[i].value[value] > max)
 				max = stats[i].value[value];
 			if (stats[i].value[value] < min)
@@ -2409,10 +2412,14 @@ static int monitor(const int sock)
 	if (opts & OPTS_HISTOGRAM) {
 		stats_histogram(stats, readings, POWER_TOTAL,
 			"\nHistogram (of %d power measurements)\n\n",
-			"Range (Watts)");
+			"Range (Watts)", 1.0);
 		stats_histogram(stats, readings, CPU_TOTAL,
 			"\nHistogram (of %d CPU utilization measurements)\n\n",
-			"Range (%CPU)");
+			"Range (%CPU)", 1.0);
+		if (opts & OPTS_CPU_FREQ)
+			stats_histogram(stats, readings, CPU_FREQ,
+				"\nHistogram (of %d CPU average frequencies)\n\n",
+				"Range (GHz)", 1e9);
 	}
 
 	free(stats);
