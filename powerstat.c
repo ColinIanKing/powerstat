@@ -663,7 +663,11 @@ static void stats_cpu_freq_read(stats_t *const stats)
 	}
 	if (n_cpus > -1)
 		free(cpu_list);
-	stats->value[CPU_FREQ] = n > 0.0 ? total_freq / n : 0;
+
+	if (n)
+		stats->value[CPU_FREQ] = total_freq / n;
+	else
+		stats->value[CPU_FREQ] = 0;
 }
 
 /*
