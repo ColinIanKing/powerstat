@@ -51,6 +51,11 @@ specify delay before starting, default is 180 seconds when running on battery or
 .B \-D
 enable extra power stats showing all the power domain power readings. This currently only applies to the \-R RAPL option.
 .TP
+.B \-f
+compute an average frequency from all on-line CPU cores. Unfortunately a CPU core is always active to gather any form of stats because
+powerstat has to be running to do so, so these statistics are skewed by this.  Best to use this option with a reasonably large delay
+(more than 5 seconds) between samples.
+.TP
 .B \-h
 show help.
 .TP

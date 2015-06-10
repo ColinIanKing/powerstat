@@ -84,6 +84,7 @@ typedef enum {
 	CPU_CTXT,
 	CPU_PROCS_RUN,
 	CPU_PROCS_BLK,
+	CPU_FREQ,
 	PROC_FORK,
 	PROC_EXEC,
 	PROC_EXIT,
@@ -127,6 +128,23 @@ typedef struct cpu_info {
 	struct cpu_info *list_next;	/* Next in list of cpu_infos list */
 } cpu_info_t;
 
+
+typedef struct {
+	double		threshold;
+	double		scale;
+	char 		*suffix;
+} cpu_freq_scale_t;
+
+static cpu_freq_scale_t cpu_freq_scale[] = {
+	{ 1e1,  1e0,  "Hz" },
+	{ 1e4,  1e3,  "KHz" },
+	{ 1e7,  1e6,  "MHz" },
+	{ 1e10, 1e9,  "GHz" },
+	{ 1e13, 1e12, "THz" },
+	{ 1e16, 1e15, "PHz" },
+	{ -1.0, -1.0,  NULL }
+};
+
 #define MAX_STATES	(67)
 #define MAX_CPUS	(1031)
 
@@ -148,6 +166,7 @@ static const char *cpu_path = "/sys/devices/system/cpu";
 #define OPTS_DOMAIN_STATS	(0x0200)	/* Extra wide power domain stats */
 #define OPTS_HISTOGRAM		(0x0400)	/* Histogram */
 #define OPTS_CSTATES		(0x0800)	/* C-STATES dump */
+#define OPTS_CPU_FREQ		(0x1000)	/* Average CPU frequency */
 
 #define OPTS_USE_NETLINK	(OPTS_SHOW_PROC_ACTIVITY | \
 				 OPTS_REDO_NETLINK_BUSY |  \
@@ -295,6 +314,52 @@ static char *file_get(const char *const file)
 	(void)fclose(fp);
 
 	return strdup(buffer);
+}
+
+/*
+ *  file_get_uint64()
+ *	read a line from a /sys file
+ */
+static int file_get_uint64(const char *const file, uint64_t *val)
+{
+	FILE *fp;
+
+	if ((fp = fopen(file, "r")) == NULL)
+		return -1;
+
+	if (fscanf(fp, "%" SCNu64, val) != 1) {
+		*val = 0;
+		(void)fclose(fp);
+		return -1;
+	}
+
+	(void)fclose(fp);
+	return 0;
+}
+
+/*
+ *  cpu_freq_format()
+ *	scale cpu freq into a human readable form
+ */
+static const char *cpu_freq_format(double freq)
+{
+	static char buffer[40];
+	char *suffix = "EHz";
+	double scale = 1e18;
+	size_t i;
+
+	for (i = 0; cpu_freq_scale[i].suffix; i++) {
+		if (freq < cpu_freq_scale[i].threshold) {
+			suffix = cpu_freq_scale[i].suffix;
+			scale = cpu_freq_scale[i].scale;
+			break;
+		}
+	}
+
+	snprintf(buffer, sizeof(buffer), "%5.2f %-5s",
+		freq / scale, suffix);
+
+	return buffer;
 }
 
 /*
@@ -569,6 +634,34 @@ static void stats_clear_all(stats_t *const stats, const long int n)
 		stats_clear(&stats[i]);
 }
 
+static void stats_cpu_freq_read(stats_t *const stats)
+{
+	struct dirent **cpu_list;
+	int i, n_cpus, n = 0;
+	double total_freq = 0;
+
+	n_cpus = scandir("/sys/devices/system/cpu", &cpu_list, NULL, alphasort);
+	for (i = 0; i < n_cpus; i++) {
+		char *name = cpu_list[i]->d_name;
+
+		if (!strncmp(name, "cpu", 3) && isdigit(name[3])) {
+			char path[PATH_MAX];
+			uint64_t freq;
+
+			snprintf(path, sizeof(path),
+				"/sys/devices/system/cpu/%s/cpufreq/scaling_cur_freq",
+				name);
+			if (file_get_uint64(path, &freq) == 0) {
+				total_freq += (double)freq * 1000.0;
+				n++;
+			}
+		}
+		free(cpu_list[i]);
+	}
+	free(cpu_list);
+	stats->value[CPU_FREQ] = n > 0.0 ? total_freq / n : 0;
+}
+
 /*
  *  stats_read()
  *	gather pertinent /proc/stat data
@@ -628,6 +721,9 @@ static int stats_read(stats_t *const stats)
 				stats->inaccurate[CPU_PROCS_BLK] = false;
 	}
 	(void)fclose(fp);
+
+	if (opts & OPTS_CPU_FREQ)
+		stats_cpu_freq_read(stats);
 
 	return 0;
 }
@@ -714,6 +810,7 @@ static bool stats_gather(
 			NAN : res->value[CPU_INTR] / sample_delay;
 	res->value[CPU_PROCS_RUN] = s2->inaccurate[CPU_PROCS_RUN] ? NAN : s2->value[CPU_PROCS_RUN];
 	res->value[CPU_PROCS_BLK] = s2->inaccurate[CPU_PROCS_BLK] ? NAN : s2->value[CPU_PROCS_BLK];
+	res->value[CPU_FREQ] = s2->value[CPU_FREQ];
 
 	return true;
 }
@@ -737,6 +834,9 @@ static void stats_headings(void)
 				get_domain ? get_domain(i) : "unknown");
 	}
 
+	if (opts & OPTS_CPU_FREQ)
+		printf(" %9.9s", "CPU Freq");
+
 	printf("\n");
 }
 
@@ -757,6 +857,9 @@ static void stats_ruler(void)
 		for (i = 0; i < power_domains; i++)
 			printf(" ------");
 	}
+	if (opts & OPTS_CPU_FREQ)
+		printf(" ---------");
+
 	printf("\n");
 }
 
@@ -832,6 +935,8 @@ static void stats_print(
 		for (i = 0; i < power_domains; i++)
 			printf(" %6.2f", s->value[POWER_DOMAIN_0 + i]);
 	}
+	if (opts & OPTS_CPU_FREQ)
+		printf(" %s", cpu_freq_format(s->value[CPU_FREQ]));
 
 	printf("\n");
 }
@@ -853,8 +958,8 @@ static void stats_average_stddev_min_max(
 	for (j = 0; j < MAX_VALUES; j++) {
 		double total = 0.0;
 
-		max->value[j] = -1E6;
-		min->value[j] = 1E6;
+		max->value[j] = -1E99;
+		min->value[j] = 1E99;
 
 		for (valid = 0, i = 0; i < num; i++) {
 			if (!stats[i].inaccurate[j]) {
@@ -2316,6 +2421,7 @@ void show_help(char *const argv[])
 	printf("\t-c show C-State statistics at end of the run\n");
 	printf("\t-d specify delay before starting, default is %" PRId32 " seconds\n", start_delay);
 	printf("\t-D show RAPL domain power measurements (enables -R option)\n");
+	printf("\t-f show average CPU frequency\n");
 	printf("\t-h show help\n");
 	printf("\t-H show spread of measurements with power histogram\n");
 	printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
@@ -2341,9 +2447,9 @@ int main(int argc, char * const argv[])
 
 	for (;;) {
 #if defined(POWERSTAT_X86)
-		int c = getopt(argc, argv, "bd:cDhHi:prszSR");
+		int c = getopt(argc, argv, "bd:cDfhHi:prszSR");
 #else
-		int c = getopt(argc, argv, "bd:cDhHi:prszS");
+		int c = getopt(argc, argv, "bd:cDfhHi:prszS");
 #endif
 		if (c == -1)
 			break;
@@ -2369,6 +2475,9 @@ int main(int argc, char * const argv[])
 			break;
 		case 'D':
 			opts |= (OPTS_DOMAIN_STATS | OPTS_RAPL);
+			break;
+		case 'f':
+			opts |= OPTS_CPU_FREQ;
 			break;
 		case 'h':
 			show_help(argv);
