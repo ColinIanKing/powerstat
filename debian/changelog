@@ -1,3 +1,16 @@
+powerstat (0.01.40-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Add CPU frequencies to histogram mode
+  * Update date on manual
+  * Don't divide by floating point zero, clarify CPU freq average calculation
+  * Add check to ensure we don't free scandir list when no entries found
+  * Fix a couple of warnings found on ARM builds
+  * Add the -n no headings option
+  * Add in a new -f CPU frequency option
+
+ -- Colin King <colin.king@canonical.com>  Thu, 11 Jun 2015 07:56:00 +0100
+
 powerstat (0.01.39-1) unstable; urgency=medium
 
   * Makefile: bump version
