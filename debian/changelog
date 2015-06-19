@@ -1,3 +1,10 @@
+powerstat (0.02.00-1) unstable; urgency=medium
+
+  * Makefile: bump to version 0.02.00
+  * Add thermal zone temperature monitoring
+
+ -- Colin King <colin.king@canonical.com>  Fri, 19 Jun 2015 10:35:00 +0100
+
 powerstat (0.01.40-1) unstable; urgency=medium
 
   * Makefile: bump version
