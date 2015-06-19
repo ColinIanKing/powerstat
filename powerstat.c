@@ -65,7 +65,7 @@
 #define IDLE_THRESHOLD		(98)	/* Less than this and we assume the device is not idle */
 
 #define MAX_POWER_DOMAINS	(16)	/* Maximum number of power domains allowed */
-#define MAX_POWER_VALUES	(MAX_POWER_DOMAINS + 1)
+#define MAX_THERMAL_ZONES	(16)
 
 /* Histogram specific constants */
 #define MAX_DIVISIONS		(10)
@@ -91,7 +91,8 @@ typedef enum {
 	PROC_EXIT,
 	POWER_TOTAL,
 	POWER_DOMAIN_0,
-	MAX_VALUES = POWER_DOMAIN_0 + MAX_POWER_VALUES
+	THERMAL_ZONE_0 = POWER_DOMAIN_0 + MAX_POWER_DOMAINS,
+	MAX_VALUES = THERMAL_ZONE_0 + MAX_THERMAL_ZONES,
 } stat_type;
 
 /*
@@ -169,6 +170,7 @@ static const char *cpu_path = "/sys/devices/system/cpu";
 #define OPTS_CSTATES		(0x0800)	/* C-STATES dump */
 #define OPTS_CPU_FREQ		(0x1000)	/* Average CPU frequency */
 #define OPTS_NO_STATS_HEADINGS	(0x2000)	/* No stats headings */
+#define OPTS_THERMAL_ZONE	(0x4000)	/* Thermal zones */
 
 #define OPTS_USE_NETLINK	(OPTS_SHOW_PROC_ACTIVITY | \
 				 OPTS_REDO_NETLINK_BUSY |  \
@@ -229,9 +231,17 @@ typedef struct rapl_info {
 	struct rapl_info *next;		/* Next RAPL domain */
 } rapl_info_t;
 
+/* Thermal zone info */
+typedef struct tz_info {
+	char *name;			/* Thermal Zone pathname */
+	char *type;			/* Thermal Zone type */
+	struct tz_info *next;		/* Next TZ */
+} tz_info_t;
+
 #if defined(POWERSTAT_X86)
-static rapl_info_t *rapl_list = NULL;
+static rapl_info_t *rapl_list = NULL;		/* List of RAPL domains */
 #endif
+static tz_info_t *tz_list = NULL;		/* List of thermal zones */
 static proc_info_t *proc_info[MAX_PIDS];	/* Proc hash table */
 static uint32_t max_readings;			/* number of samples to gather */
 static double sample_delay = SAMPLE_DELAY;	/* time between each sample in secs */
@@ -243,7 +253,11 @@ static volatile bool stop_recv;			/* sighandler stop flag */
 static bool power_calc_from_capacity = false;	/* true of power is calculated via capacity change */
 static const char *app_name = "powerstat";	/* name of application */
 static const char *(*get_domain)(const int i) = NULL;
-static uint8_t power_domains = 0;
+static uint8_t power_domains = 0;		/* Number of RAPL domains */
+static uint8_t thermal_zones = 0;		/* Number of thermal zones */
+
+static const char *tz_get_type(const int n);
+static int tz_get_temperature(stats_t *stats);
 
 /*
  *  Attempt to catch a range of signals so
@@ -830,22 +844,24 @@ static bool stats_gather(
  */
 static void stats_headings(void)
 {
+	uint8_t i;
+
 	if (opts & OPTS_USE_NETLINK)
 		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts");
 	else
 		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s  Watts");
 
 	if (opts & OPTS_DOMAIN_STATS) {
-		uint8_t i;
-
 		for (i = 0; i < power_domains; i++)
 			printf(" %6.6s",
 				get_domain ? get_domain(i) : "unknown");
 	}
-
+	if (opts & OPTS_THERMAL_ZONE) {
+		for (i = 0; i < thermal_zones; i++)
+			printf(" %6.6s", tz_get_type(i));
+	}
 	if (opts & OPTS_CPU_FREQ)
 		printf(" %9.9s", "CPU Freq");
-
 	printf("\n");
 }
 
@@ -855,20 +871,23 @@ static void stats_headings(void)
  */
 static void stats_ruler(void)
 {
+	uint8_t i;
+
 	if (opts & OPTS_USE_NETLINK)
 		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------");
 	else
 		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ------");
 
 	if (opts & OPTS_DOMAIN_STATS) {
-		uint8_t i;
-
 		for (i = 0; i < power_domains; i++)
+			printf(" ------");
+	}
+	if (opts & OPTS_THERMAL_ZONE) {
+		for (i = 0; i < thermal_zones; i++)
 			printf(" ------");
 	}
 	if (opts & OPTS_CPU_FREQ)
 		printf(" ---------");
-
 	printf("\n");
 }
 
@@ -899,6 +918,7 @@ static void stats_print(
 	const stats_t *const s)
 {
 	char buf[10];
+	uint8_t i;
 
 	if (summary) {
 		if (s->inaccurate[POWER_TOTAL])
@@ -941,14 +961,15 @@ static void stats_print(
 			buf);
 	}
 	if (opts & OPTS_DOMAIN_STATS) {
-		uint8_t i;
-
 		for (i = 0; i < power_domains; i++)
 			printf(" %6.2f", s->value[POWER_DOMAIN_0 + i]);
 	}
+	if (opts & OPTS_THERMAL_ZONE) {
+		for (i = 0; i < thermal_zones; i++)
+			printf(" %6.2f", s->value[THERMAL_ZONE_0 + i]);
+	}
 	if (opts & OPTS_CPU_FREQ)
 		printf(" %s", cpu_freq_format(s->value[CPU_FREQ]));
-
 	printf("\n");
 }
 
@@ -1018,6 +1039,7 @@ static void stats_histogram(
 	stats_t *const stats,
 	const int num,
 	const int value,
+	const char *short_title,
 	const char *title,
 	const char *label,
 	const double scale)
@@ -1044,7 +1066,7 @@ static void stats_histogram(
 		return;
 
 	if (max - min == 0) {
-		printf("Range is zero, cannot produce histogram\n");
+		printf("\nRange is zero, cannot produce histogram of %s\n", short_title);
 		return;
 	}
 	division = ((max * 1.000001) - min) / (MAX_DIVISIONS);
@@ -1058,6 +1080,7 @@ static void stats_histogram(
 		}
 	}
 
+	putchar('\n');
 	printf(title, num);
 	snprintf(buf, sizeof(buf), "%.0f", max);
 	digits = strlen(buf) + 4;
@@ -1683,6 +1706,134 @@ static int power_get_rapl(
 }
 #endif
 
+
+/*
+ *  tz_free_list()
+ *	free thermal zone list
+ */
+void tz_free_list(void)
+{
+	tz_info_t *tz = tz_list;
+
+	while (tz) {
+		tz_info_t *next = tz->next;
+
+		free(tz->name);
+		free(tz->type);
+		free(tz);
+		tz = next;
+	}
+}
+
+/*
+ *  tz_get_type()
+ *	find the Nth thermal zone type
+ */
+static const char *tz_get_type(const int n)
+{
+	int i;
+
+	tz_info_t *tz = tz_list;
+
+	for (i = 0; i < n && tz; i++) {
+		tz = tz->next;
+	}
+	if (tz) {
+		return tz->type;
+	}
+	return "unknown";
+}
+
+/*
+ *  tz_get_zones()
+ *	collect valid thermal_zones
+ */
+static int tz_get_zones(void)
+{
+	DIR *dir;
+        struct dirent *entry;
+	int n = 0;
+
+	dir = opendir("/sys/class/thermal");
+	if (dir == NULL) {
+		printf("Device does not have thermal zones.\n");
+		return -1;
+	}
+
+	while ((entry = readdir(dir)) != NULL) {
+		char path[PATH_MAX];
+		FILE *fp;
+		tz_info_t *tz;
+
+		/* Ignore non TZ interfaces */
+		if (strncmp(entry->d_name, "thermal_zone", 12))
+			continue;
+
+		if ((tz = calloc(1, sizeof(*tz))) == NULL) {
+			fprintf(stderr, "Cannot allocate thermal information.\n");
+			closedir(dir);
+			return -1;
+		}
+		if ((tz->name = strdup(entry->d_name)) == NULL) {
+			fprintf(stderr, "Cannot allocate thermal zone name information.\n");
+			closedir(dir);
+			free(tz);
+			return -1;
+		}
+		snprintf(path, sizeof(path),
+			"/sys/class/thermal/%s/type",
+			entry->d_name);
+
+		tz->type = NULL;
+		if ((fp = fopen(path, "r")) != NULL) {
+			char type[128];
+
+			if (fgets(type, sizeof(type), fp) != NULL) {
+				type[strcspn(type, "\n")] = '\0';
+				tz->type  = strdup(type);
+			}
+			(void)fclose(fp);
+		}
+		if (tz->type == NULL) {
+			free(tz->name);
+			free(tz);
+			continue;
+		}
+
+		tz->next = tz_list;
+		tz_list = tz;
+		n++;
+	}
+	(void)closedir(dir);
+	thermal_zones = n;
+
+	return n;
+}
+
+/*
+ *  tz_get_temperature()
+ *	get temperatures from thermal zones
+ */
+static int tz_get_temperature( stats_t *stats)
+{
+	tz_info_t *tz;
+	int n = 0;
+
+	for (tz = tz_list; tz; tz = tz->next) {
+		char path[PATH_MAX];
+		uint64_t temp;
+
+		snprintf(path, sizeof(path),
+			"/sys/class/thermal/%s/temp",
+			tz->name);
+		if (file_get_uint64(path, &temp) == 0) {
+			stats->value[THERMAL_ZONE_0 + n] = (double)temp / 1000.0;
+			n++;
+		}
+	}
+	return 0;
+}
+
 /*
  *  power_get()
  *	fetch power via which ever interface is available
@@ -1694,7 +1845,7 @@ static int power_get(
 	struct stat buf;
 	int i;
 
-	for (i = POWER_TOTAL; i < MAX_VALUES; i++) {
+	for (i = POWER_TOTAL; i < POWER_DOMAIN_0 + MAX_POWER_DOMAINS; i++) {
 		stats->value[i] = i;
 		stats->inaccurate[i] = 0.0;
 	}
@@ -2227,7 +2378,6 @@ static int monitor(const int sock)
 				free(stats);
 				return -1;
 			}
-
 			/*
 			 *  Total ticks was zero, something is broken,
 			 *  so re-sample
@@ -2258,6 +2408,8 @@ static int monitor(const int sock)
 				free(stats);
 				return -1; 	/* Failure to read */
 			}
+			if (opts & OPTS_THERMAL_ZONE)
+				tz_get_temperature(&stats[readings]);
 
 			if (!discharging) {
 				free(stats);
@@ -2405,21 +2557,41 @@ static int monitor(const int sock)
 				printf("Note: The battery supplied suitable power data, -S option not required.\n");
 		}
 	}
+	/* Just in case user wondered why no thermal zone info was displayed */
+	if ((opts & OPTS_THERMAL_ZONE) && (!thermal_zones))
+		printf("Note: No thermal zones on this device.\n");
 
 	if (opts & OPTS_CSTATES)
 		cpu_states_dump();
 
+
 	if (opts & OPTS_HISTOGRAM) {
 		stats_histogram(stats, readings, POWER_TOTAL,
-			"\nHistogram (of %d power measurements)\n\n",
+			"power measurements",
+			"Histogram (of %d power measurements)\n\n",
 			"Range (Watts)", 1.0);
 		stats_histogram(stats, readings, CPU_TOTAL,
-			"\nHistogram (of %d CPU utilization measurements)\n\n",
+			"CPU utilization",
+			"Histogram (of %d CPU utilization measurements)\n\n",
 			"Range (%CPU)", 1.0);
 		if (opts & OPTS_CPU_FREQ)
 			stats_histogram(stats, readings, CPU_FREQ,
-				"\nHistogram (of %d CPU average frequencies)\n\n",
+				"CPU average frequencies",
+				"Histogram (of %d CPU average frequencies)\n\n",
 				"Range (GHz)", 1e9);
+		if (opts & OPTS_THERMAL_ZONE) {
+			uint8_t	tz;
+
+			for (tz = 0; tz < thermal_zones; tz++) {
+				char buf1[80], buf2[80];
+				const char *type = tz_get_type(tz);
+
+				snprintf(buf1, sizeof(buf1), "thermal zone %s", type);
+				snprintf(buf2, sizeof(buf2), "Histogram (of %%d thermal zone %s readings)\n\n", type);
+				stats_histogram(stats, readings, THERMAL_ZONE_0 + tz,
+					buf1, buf2, "Range (°C)", 1.0);
+			}
+		}
 	}
 
 	free(stats);
@@ -2451,6 +2623,7 @@ void show_help(char *const argv[])
 #endif
 	printf("\t-s show process fork/exec/exit activity log\n");
 	printf("\t-S calculate power from capacity drain using standard average\n");
+	printf("\t-t show Thermal Zone temperatures (in degrees C)\n");
 	printf("\t-z forcibly ignore zero power rate stats from the battery\n");
 	printf("\tdelay: delay between each sample, default is %.1f seconds\n", SAMPLE_DELAY);
 	printf("\tcount: number of samples to take\n");
@@ -2466,9 +2639,9 @@ int main(int argc, char * const argv[])
 
 	for (;;) {
 #if defined(POWERSTAT_X86)
-		int c = getopt(argc, argv, "bd:cDfhHi:nprszSR");
+		int c = getopt(argc, argv, "bd:cDfhHi:nprszStR");
 #else
-		int c = getopt(argc, argv, "bd:cDfhHi:nprszS");
+		int c = getopt(argc, argv, "bd:cDfhHi:nprszSt");
 #endif
 		if (c == -1)
 			break;
@@ -2532,6 +2705,9 @@ int main(int argc, char * const argv[])
 		case 'S':
 			opts |= OPTS_STANDARD_AVERAGE;
 			break;
+		case 't':
+			opts |= OPTS_THERMAL_ZONE;
+			break;
 		case 'z':
 			opts |= OPTS_ZERO_RATE_ALLOW;
 			break;
@@ -2558,6 +2734,8 @@ int main(int argc, char * const argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
+	if (opts & OPTS_THERMAL_ZONE)
+		tz_get_zones();
 #if defined(POWERSTAT_X86)
 	if ((opts & OPTS_RAPL) && (rapl_get_domains() < 1))
 		exit(EXIT_FAILURE);
@@ -2675,8 +2853,11 @@ abort:
 			(void)close(sock);
 	}
 #if defined(POWERSTAT_X86)
-	rapl_free_list();
+	if (opts & OPTS_RAPL)
+		rapl_free_list();
 #endif
+	if (opts & OPTS_THERMAL_ZONE)
+		tz_free_list();
 	if (opts & OPTS_CSTATES)
 		cpu_states_free();
 

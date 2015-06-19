@@ -95,6 +95,10 @@ if the battery reports just capacity values and is an alternative method
 of calculating the power consumption based on the start and current battery
 capacity.
 .TP
+.B \-t
+gather temperatures from all the available thermal zones on the device. If there
+are no thermal zones available then nothing will be displayed.
+.TP
 .B \-z
 forcibly ignore zero power rate readings from the battery, don't use this unless you know what you are doing.
 .SH EXAMPLES
@@ -133,6 +137,11 @@ powerstat \-i 95
 Wait to settle for 1 minute then measure power every 20 seconds and show any fork()/exec()/exit() activity at end of the measuring
 .RS 8
 powerstat \-d 60 \-s 20
+.RE
+.LP
+Measure temperature, CPU frequencies, C-states, power via RAPL domains, produce histograms, don't print repeated headings and measure every 0.5 seconds
+.RS 8
+powerstat -tfcRHn 0.5
 .RE
 .SH SEE ALSO
 .BR vmstat (8), 
