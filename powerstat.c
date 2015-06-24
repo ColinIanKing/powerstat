@@ -847,9 +847,9 @@ static void stats_headings(void)
 	uint8_t i;
 
 	if (opts & OPTS_USE_NETLINK)
-		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts");
+		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts ");
 	else
-		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s  Watts");
+		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s  Watts ");
 
 	if (opts & OPTS_DOMAIN_STATS) {
 		for (i = 0; i < power_domains; i++)
@@ -922,14 +922,14 @@ static void stats_print(
 
 	if (summary) {
 		if (s->inaccurate[POWER_TOTAL])
-			(void)snprintf(buf, sizeof(buf), "-N/A-");
+			(void)snprintf(buf, sizeof(buf), " -N/A-");
 		else
 			(void)snprintf(buf, sizeof(buf), "%6.2f",
 				s->value[POWER_TOTAL]);
 	} else {
 		(void)snprintf(buf, sizeof(buf), "%6.2f%s",
 			s->value[POWER_TOTAL],
-			s->inaccurate[POWER_TOTAL] ? "E" : "");
+			s->inaccurate[POWER_TOTAL] ? "E" : " ");
 	}
 
 	if (opts & OPTS_USE_NETLINK) {
