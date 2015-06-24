@@ -1,3 +1,12 @@
+powerstat (0.02.01-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Fix power formatting when E estimate is being displayed
+  * Check for insane temperatures, set to zero if out of range
+  * Re-enable -z option
+
+ -- Colin King <colin.king@canonical.com>  Wed, 24 Jun 2015 14:51:00 +0100
+
 powerstat (0.02.00-1) unstable; urgency=medium
 
   * Makefile: bump to version 0.02.00
