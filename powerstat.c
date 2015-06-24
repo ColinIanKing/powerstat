@@ -1839,7 +1839,11 @@ static int tz_get_temperature( stats_t *stats)
 			"/sys/class/thermal/%s/temp",
 			tz->name);
 		if (file_get_uint64(path, &temp) == 0) {
-			stats->value[THERMAL_ZONE_0 + n] = (double)temp / 1000.0;
+			double temp_c = (double)temp / 1000.0;
+			/* Threshold out insane values */
+			if ((temp_c < 0.0) || (temp_c > 250.0))
+				temp_c = 0.0;
+			stats->value[THERMAL_ZONE_0 + n] = temp_c;
 			n++;
 		}
 	}
