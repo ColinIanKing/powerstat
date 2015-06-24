@@ -1334,6 +1334,10 @@ static int power_get_sys_fs(
 	(void)closedir(dir);
 
 	if (! *discharging) {
+		if (opts & OPTS_ZERO_RATE_ALLOW) {
+			*discharging = true;	/* Lie */
+			return 0;
+		}
 		printf("Device is not discharging, cannot measure power usage.\n");
 		return -1;
 	}
@@ -1459,6 +1463,10 @@ static int power_get_proc_acpi(
 	(void)closedir(dir);
 
 	if (! *discharging) {
+		if (opts & OPTS_ZERO_RATE_ALLOW) {
+			*discharging = true;	/* Lie */
+			return 0;
+		}
 		printf("Device is indicating it is not discharging and hence "
 		       "we cannot measure power usage.\n");
 		return -1;
@@ -1699,6 +1707,10 @@ static int power_get_rapl(
 	}
 
 	if (!n) {
+		if (opts & OPTS_ZERO_RATE_ALLOW) {
+			*discharging = true;	/* Lie */
+			return 0;
+		}
 		printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
 		return -1;
 	}
