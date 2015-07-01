@@ -36,12 +36,14 @@
 #include <float.h>
 #include <time.h>
 #include <getopt.h>
+#include <sched.h>
 
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 
 #include <linux/connector.h>
 #include <linux/netlink.h>
@@ -70,6 +72,10 @@
 /* Histogram specific constants */
 #define MAX_DIVISIONS		(10)
 #define HISTOGRAM_WIDTH		(40)
+
+#define GOT_TGID		(0x01)
+#define GOT_PPID		(0x02)
+#define GOT_ALL			(GOT_TGID | GOT_PPID)
 
 /* Statistics gathered from /proc/stat and process activity */
 typedef enum {
@@ -313,6 +319,34 @@ static const int signals[] = {
 };
 
 /*
+ *   set_prioity
+ *	set high priority to try and get netlink activty
+ *	before short lived processes die
+ */
+static void set_priority(void)
+{
+	int max;
+	struct sched_param param;
+	int sched;
+
+#if defined(SCHED_DEADLINE)
+	sched = SCHED_DEADLINE;
+#elif defined(SCHED_SCHED_FIFO)
+	sched = SCHED_FIFO;
+#elif defined(SCHED_RR)
+	sched = SCHED_FIFO;
+#else
+	sched = SCHED_OTHER;	/* Oh well */
+#endif
+	if ((max = sched_get_priority_max(sched)) < 0)
+		return;
+
+	memset(&param, 0, sizeof(param));
+	param.sched_priority = max;
+	(void)sched_setscheduler(getpid(), sched, &param);
+}
+
+/*
  *  file_get()
  *	read a line from a /sys file
  */
@@ -378,6 +412,57 @@ static const char *cpu_freq_format(double freq)
 		freq / scale, suffix);
 
 	return buffer;
+}
+
+/*
+ *  get_parent_pid()
+ *	get parent pid and set is_thread to true if process
+ *	not forked but a newly created thread
+ */
+static pid_t get_parent_pid(const pid_t pid, bool *is_thread)
+{
+	FILE *fp;
+	char path[PATH_MAX];
+	char buffer[4096];
+	pid_t tgid = 0, ppid = 0;
+	unsigned int got = 0;
+
+	*is_thread = false;
+	snprintf(path, sizeof(path), "/proc/%u/status", pid);
+	if ((fp = fopen(path, "r")) == NULL)
+		return 0;
+
+	while (((got & GOT_ALL) != GOT_ALL) &&
+	       (fgets(buffer, sizeof(buffer), fp) != NULL)) {
+		if (!strncmp(buffer, "Tgid:", 5)) {
+			if (sscanf(buffer + 5, "%u", &tgid) == 1) {
+				got |= GOT_TGID;
+			} else {
+				tgid = 0;
+			}
+		}
+		if (!strncmp(buffer, "PPid:", 5)) {
+			if (sscanf(buffer + 5, "%u", &ppid) == 1) {
+				got |= GOT_PPID;
+			} else {
+				ppid = 0;
+			}
+		}
+	}
+	fclose(fp);
+
+	if ((got & GOT_ALL) == GOT_ALL) {
+		/*  TGID and PID are not the same if it is a thread */
+		if (tgid != pid) {
+			/* In this case, the parent is the TGID */
+			ppid = tgid;
+			*is_thread = true;
+		}
+	} else {
+		ppid = 0;
+	}
+
+	return ppid;
 }
 
 /*
@@ -2161,16 +2246,37 @@ static int proc_cmdline(
 	char *const cmdline,
 	const size_t size)
 {
-	FILE *fp;
+	int fd;
 	char path[PATH_MAX];
 	int n = 0;
 
 	*cmdline = '\0';
 	(void)snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
-	if ((fp = fopen(path, "r")) != NULL) {
-		n = fread(cmdline, size, 1, fp);
-		(void)fclose(fp);
+	if ((fd = open(path, O_RDONLY)) > -1) {
+		n = read(fd, cmdline, size);
+		(void)close(fd);
 	}
+	/*
+	 * No cmdline, could be a kernel thread, so get the comm
+	 * field instead
+	 */
+	if (!*cmdline) {
+		(void)snprintf(path, sizeof(path), "/proc/%d/comm", pid);
+		if ((fd = open(path, O_RDONLY)) > -1) {
+			n = read(fd, cmdline, size);
+			(void)close(fd);
+			if (n)
+				cmdline[n - 1] = '\0';	/* remove trailing \n */
+		}
+	}
+
+	if (n == 0) {	
+		strncpy(cmdline, "<unknown>", size);
+		n = 9;
+	} else {
+		cmdline[n] = '\0';
+	}
+
 	return n;
 }
 
@@ -2462,9 +2568,10 @@ static int monitor(const int sock)
 			for (nlmsghdr = (struct nlmsghdr *)buf;
 				NLMSG_OK (nlmsghdr, len);
 				nlmsghdr = NLMSG_NEXT (nlmsghdr, len)) {
-
 				struct cn_msg *cn_msg;
 				struct proc_event *proc_ev;
+				pid_t ppid;
+				bool is_thread;
 
 				if ((nlmsghdr->nlmsg_type == NLMSG_ERROR) ||
 				    (nlmsghdr->nlmsg_type == NLMSG_NOOP))
@@ -2481,13 +2588,15 @@ static int monitor(const int sock)
        				switch (proc_ev->what) {
 				case PROC_EVENT_FORK:
 					stats[readings].value[PROC_FORK] += 1.0;
+					ppid = get_parent_pid(proc_ev->event_data.fork.child_pid, &is_thread);
+
 					proc_info_add(proc_ev->event_data.fork.child_pid);
 					if (opts & OPTS_SHOW_PROC_ACTIVITY) {
-               					log_printf("fork: parent tid=%d pid=%d -> child tid=%d pid=%d (%s)\n",
-                       					proc_ev->event_data.fork.parent_pid,
-                       					proc_ev->event_data.fork.parent_tgid,
+						char *type = is_thread ? "clone" : "fork";
+               					log_printf("fork: parent pid=%d -> %s pid=%d (%s)\n",
+							ppid,
+							type,
                        					proc_ev->event_data.fork.child_pid,
-                       					proc_ev->event_data.fork.child_tgid,
 							proc_info_get(proc_ev->event_data.fork.child_pid));
 					}
 					redo = true;
@@ -2495,8 +2604,7 @@ static int monitor(const int sock)
            			case PROC_EVENT_EXEC:
 					stats[readings].value[PROC_EXEC] += 1.0;
 					if (opts & OPTS_SHOW_PROC_ACTIVITY) {
-               					log_printf("exec: tid=%d pid=%d (%s)\n",
-                       					proc_ev->event_data.exec.process_pid,
+               					log_printf("exec: pid=%d (%s)\n",
                        					proc_ev->event_data.exec.process_tgid,
 							proc_info_get(proc_ev->event_data.exec.process_pid));
 					}
@@ -2505,9 +2613,8 @@ static int monitor(const int sock)
            			case PROC_EVENT_EXIT:
 					stats[readings].value[PROC_EXIT] += 1.0;
 					if (opts & OPTS_SHOW_PROC_ACTIVITY) {
-               					log_printf("exit: tid=%d pid=%d exit_code=%d (%s)\n",
+               					log_printf("exit: pid=%d exit_code=%d (%s)\n",
                         				proc_ev->event_data.exit.process_pid,
-                        				proc_ev->event_data.exit.process_tgid,
                         				proc_ev->event_data.exit.exit_code,
 							proc_info_get(proc_ev->event_data.exit.process_pid));
 					}
@@ -2854,6 +2961,8 @@ int main(int argc, char * const argv[])
 
 	if (power_get(&dummy_stats, &discharging) < 0)
 		goto abort_sock;
+
+	set_priority();
 
     	if (monitor(sock) ==  0)
 		ret = EXIT_SUCCESS;
