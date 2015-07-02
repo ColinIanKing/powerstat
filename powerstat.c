@@ -435,14 +435,14 @@ static pid_t get_parent_pid(const pid_t pid, bool *is_thread)
 	while (((got & GOT_ALL) != GOT_ALL) &&
 	       (fgets(buffer, sizeof(buffer), fp) != NULL)) {
 		if (!strncmp(buffer, "Tgid:", 5)) {
-			if (sscanf(buffer + 5, "%u", &tgid) == 1) {
+			if (sscanf(buffer + 5, "%10u", &tgid) == 1) {
 				got |= GOT_TGID;
 			} else {
 				tgid = 0;
 			}
 		}
 		if (!strncmp(buffer, "PPid:", 5)) {
-			if (sscanf(buffer + 5, "%u", &ppid) == 1) {
+			if (sscanf(buffer + 5, "%10u", &ppid) == 1) {
 				got |= GOT_PPID;
 			} else {
 				ppid = 0;
@@ -2253,8 +2253,9 @@ static int proc_cmdline(
 	*cmdline = '\0';
 	(void)snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
 	if ((fd = open(path, O_RDONLY)) > -1) {
-		n = read(fd, cmdline, size);
+		n = read(fd, cmdline, size - 1);
 		(void)close(fd);
+		cmdline[n] = '\0';
 	}
 	/*
 	 * No cmdline, could be a kernel thread, so get the comm
@@ -2263,7 +2264,7 @@ static int proc_cmdline(
 	if (!*cmdline) {
 		(void)snprintf(path, sizeof(path), "/proc/%d/comm", pid);
 		if ((fd = open(path, O_RDONLY)) > -1) {
-			n = read(fd, cmdline, size);
+			n = read(fd, cmdline, size - 1);
 			(void)close(fd);
 			if (n)
 				cmdline[n - 1] = '\0';	/* remove trailing \n */
@@ -2273,8 +2274,6 @@ static int proc_cmdline(
 	if (n == 0) {	
 		strncpy(cmdline, "<unknown>", size);
 		n = 9;
-	} else {
-		cmdline[n] = '\0';
 	}
 
 	return n;
