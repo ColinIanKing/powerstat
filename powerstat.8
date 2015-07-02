@@ -103,7 +103,9 @@ gather temperatures from all the available thermal zones on the device. If there
 are no thermal zones available then nothing will be displayed.
 .TP
 .B \-z
-forcibly ignore zero power rate readings from the battery, don't use this unless you know what you are doing.
+forcibly ignore zero power rate readings from the battery. Use this to gather other statistics
+(for example when using \-c, \-f, \-t options) if powerstat cannot measure power (not discharging
+or no RAPL interface).
 .SH EXAMPLES
 .LP
 Measure power with the default of 10 samples with an interval of 10 seconds
