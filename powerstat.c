@@ -2858,6 +2858,8 @@ int main(int argc, char * const argv[])
 	}
 	if (opts & OPTS_THERMAL_ZONE)
 		tz_get_zones();
+	if ((opts & (OPTS_START_DELAY | OPTS_ZERO_RATE_ALLOW)) == OPTS_ZERO_RATE_ALLOW)
+		start_delay = 0;
 #if defined(POWERSTAT_X86)
 	if ((opts & OPTS_RAPL) && (rapl_get_domains() < 1))
 		exit(EXIT_FAILURE);
