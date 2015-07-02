@@ -1,3 +1,14 @@
+powerstat (0.02.02-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * manual: improve the -z option
+  * Add -a (all) option
+  * When using -z, set sample delay to zero if not specified
+  * ensure we don't get buffer overflow on comm and cmdline reads
+  * Add thread/child detection, add better proc name fetching
+
+ -- Colin King <colin.king@canonical.com>  Thu, 2 Jul 2015 09:52:00 +0100
+
 powerstat (0.02.01-1) unstable; urgency=medium
 
   * Makefile: bump version
