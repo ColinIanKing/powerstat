@@ -2729,6 +2729,7 @@ void show_help(char *const argv[])
 {
 	printf("%s, version %s\n\n", app_name, VERSION);
 	printf("usage: %s [-d secs] [-i thresh] [-b|-h|-p|-r|-R|-s|-z] [delay [count]]\n", argv[0]);
+	printf("\t-a enable all sampling collection options (-c, -f, -t and -H)\n");
 	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
 	printf("\t-c show C-State statistics at end of the run\n");
 	printf("\t-d specify delay before starting, default is %" PRId32 " seconds\n", start_delay);
@@ -2761,13 +2762,19 @@ int main(int argc, char * const argv[])
 
 	for (;;) {
 #if defined(POWERSTAT_X86)
-		int c = getopt(argc, argv, "bd:cDfhHi:nprszStR");
+		int c = getopt(argc, argv, "abd:cDfhHi:nprszStR");
 #else
-		int c = getopt(argc, argv, "bd:cDfhHi:nprszSt");
+		int c = getopt(argc, argv, "abd:cDfhHi:nprszSt");
 #endif
 		if (c == -1)
 			break;
 		switch (c) {
+		case 'a':
+			opts |= (OPTS_CSTATES |
+				 OPTS_CPU_FREQ |
+				 OPTS_HISTOGRAM |
+				 OPTS_THERMAL_ZONE);
+			break;
 		case 'b':
 			opts |= OPTS_REDO_WHEN_NOT_IDLE;
 			break;
