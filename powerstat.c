@@ -2255,7 +2255,8 @@ static int proc_cmdline(
 	if ((fd = open(path, O_RDONLY)) > -1) {
 		n = read(fd, cmdline, size - 1);
 		(void)close(fd);
-		cmdline[n] = '\0';
+		if (n > -1)
+			cmdline[n] = '\0';
 	}
 	/*
 	 * No cmdline, could be a kernel thread, so get the comm
@@ -2266,12 +2267,12 @@ static int proc_cmdline(
 		if ((fd = open(path, O_RDONLY)) > -1) {
 			n = read(fd, cmdline, size - 1);
 			(void)close(fd);
-			if (n)
+			if (n > 0)
 				cmdline[n - 1] = '\0';	/* remove trailing \n */
 		}
 	}
 
-	if (n == 0) {	
+	if (n < 1) {
 		strncpy(cmdline, "<unknown>", size);
 		n = 9;
 	}
