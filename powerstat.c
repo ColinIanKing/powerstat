@@ -2729,7 +2729,7 @@ static int monitor(const int sock)
 void show_help(char *const argv[])
 {
 	printf("%s, version %s\n\n", app_name, VERSION);
-	printf("usage: %s [-d secs] [-i thresh] [-b|-h|-p|-r|-R|-s|-z] [delay [count]]\n", argv[0]);
+	printf("usage: %s [options] [delay [count]]\n", argv[0]);
 	printf("\t-a enable all sampling collection options (-c, -f, -t and -H)\n");
 	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
 	printf("\t-c show C-State statistics at end of the run\n");
