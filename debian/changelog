@@ -166,14 +166,14 @@ powerstat (0.01.30-1) unstable; urgency=low
   * Fix copyright
   * Add COPYING file
 
- -- Colin King <colin.king@canonical.com>  Thu, 20 March 2014 12:19:21 +0000
+ -- Colin King <colin.king@canonical.com>  Thu, 20 Mar 2014 12:19:21 +0000
 
 powerstat (0.01.29-1) unstable; urgency=low
 
   * Makefile: bump version
   * Avoid some potential buffer overflows
 
- -- Colin King <colin.king@canonical.com>  Fri, 14 March 2014 09:45:32 +0000
+ -- Colin King <colin.king@canonical.com>  Fri, 14 Mar 2014 09:45:32 +0000
 
 powerstat (0.01.28-1) unstable; urgency=low
 
@@ -184,7 +184,7 @@ powerstat (0.01.28-1) unstable; urgency=low
   * Fix comment
   * Move some variables to a lower scope
 
- -- Colin King <colin.king@canonical.com>  Thu, 23 January 2014 16:54:04 +0000
+ -- Colin King <colin.king@canonical.com>  Thu, 23 Jan 2014 16:54:04 +0000
 
 powerstat (0.01.27-1) unstable; urgency=low
 
@@ -193,7 +193,7 @@ powerstat (0.01.27-1) unstable; urgency=low
   * Some minor code clean ups, no functional change
   * factor out rolling average calculation
 
- -- Colin King <colin.king@canonical.com>  Tue, 7 January 2014 16:26:00 +0000
+ -- Colin King <colin.king@canonical.com>  Tue, 7 Jan 2014 16:26:00 +0000
 
 powerstat (0.01.26-1) unstable; urgency=low
 
@@ -205,21 +205,21 @@ powerstat (0.01.26-1) unstable; urgency=low
   * Fix build warning now we are using -Wextra
   * Makefile: add -Wextra
 
- -- Colin King <colin.king@canonical.com>  Thu, 28 November 2013 21:35:01 +0000
+ -- Colin King <colin.king@canonical.com>  Thu, 28 Nov 2013 21:35:01 +0000
 
 powerstat (0.01.25-1) unstable; urgency=low
 
   * Makefile: bump version
   * powerstat: don't abort if kernel does not support NETLINK_CONNECTOR
 
- -- Colin King <colin.king@canonical.com>  Wed, 3 July 2013 18:54:23 +0100
+ -- Colin King <colin.king@canonical.com>  Wed, 3 Jul 2013 18:54:23 +0100
 
 powerstat (0.01.24-1) unstable; urgency=low
 
   * Makefile: bump version
   * powerstat: handle -ve tv by forcing resample rather
 
- -- Colin King <colin.king@canonical.com>  Mon, 10 June 2013 20:01:59 +0100
+ -- Colin King <colin.king@canonical.com>  Mon, 10 Jun 2013 20:01:59 +0100
 
 powerstat (0.01.23-1) unstable; urgency=low
 
