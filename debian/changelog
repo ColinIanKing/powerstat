@@ -1,3 +1,14 @@
+powerstat (0.02.04-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Update debian/compat to 9
+  * Fix dates in changelog
+  * Update date in manual
+  * Add power-calibrate reference in manual
+  * Update usage, use options rather than partial list of opts
+
+ -- Colin King <colin.king@canonical.com>  Tue, 1 Sep 2015 09:27:25 +0100
+
 powerstat (0.02.03-1) unstable; urgency=medium
 
   * Makefile: bump version
