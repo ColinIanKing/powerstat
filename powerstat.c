@@ -569,7 +569,7 @@ static int log_printf(const char *const fmt, ...)
 	(void)vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 
-	if ((log_item = calloc(1, sizeof(log_t))) == NULL) {
+	if ((log_item = calloc(1, sizeof(log_item))) == NULL) {
 		fprintf(stderr, "Out of memory allocating log item.\n");
 		return -1;
 	}
