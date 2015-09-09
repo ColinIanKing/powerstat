@@ -1,3 +1,10 @@
+powerstat (0.02.05-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Fix allocation of log_item, as allocating with incorrect struct
+
+ -- Colin King <colin.king@canonical.com>  Wed, 9 Sep 2015 10:01:02 +0100
+
 powerstat (0.02.04-1) unstable; urgency=medium
 
   * Makefile: bump version
