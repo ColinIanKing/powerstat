@@ -26,7 +26,7 @@ powerstat \- a tool to measure power consumption
 .br
 
 .SH DESCRIPTION
-powerstat is a program that measures the power consumption of a computer
+powerstat measures the power consumption of a computer
 that has a battery power source or supports the RAPL (Running Average Power
 Limit) interface.  The output is like vmstat but also shows power
 consumption statistics.  At the end of a run, powerstat will calculate
@@ -34,7 +34,7 @@ the average, standard deviation and min/max of the gathered data.
 .br
 
 Note that running powerstat as root will provide extra information about
-processes that have fork'd, exec'd and exited.
+process fork(2), exec(2) and exit(2) activity.
 
 .SH OPTIONS
 powerstat options are as follow:
@@ -49,15 +49,15 @@ redo a sample measurement if a system is busy, the default for busy is considere
 gather CPU C-state activity and show the % time and count in each C-state at the end of the run. 
 .TP
 .B \-d delay
-specify delay before starting, default is 180 seconds when running on battery or 0 seconds when using RAPL. This gives the machine time to settle down and for the battery readings to stabilize.
+specify delay in seconds before starting, default is 180 seconds when running on battery or 0 seconds when using RAPL. This gives the machine time to settle down and for the battery readings to stabilize.
 .TP
 .B \-D
 enable extra power stats showing all the power domain power readings. This currently only applies to the \-R RAPL option.
 .TP
 .B \-f
 compute an average frequency from all on-line CPU cores. Unfortunately a CPU core is always active to gather any form of stats because
-powerstat has to be running to do so, so these statistics are skewed by this.  Best to use this option with a reasonably large delay
-(more than 5 seconds) between samples.
+powerstat has to be running to do so, so these statistics are skewed by this.  It is best to use this option with a reasonably large delay
+(more than 5 seconds) between samples to reduce the overhead of powerstat.
 .TP
 .B \-h
 show help.
