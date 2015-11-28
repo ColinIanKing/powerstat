@@ -1969,28 +1969,24 @@ static int power_get(
 }
 
 /*
- *  pjw()
- *	Hash a string, from Aho, Sethi, Ullman, Compiling Techniques.
+ *  hash_djb2a()
+ *	Hash a string, from Dan Bernstein comp.lang.c (xor version)
  */
-static uint32_t pjw(const char *str, const uint32_t id)
+static uint32_t hash_djb2a(const char *str, const uint32_t id)
 {
-	uint32_t h = id * 173;
+	register uint32_t hash = 5381 + id;
+	register int c;
 
-	while (*str) {
-		uint32_t g;
-		h = (h << 4) + (*str);
-		if (0 != (g = h & 0xf0000000)) {
-			h = h ^ (g >> 24);
-			h = h ^ g;
-		}
-		str++;
+	while ((c = *str++)) {
+		/* (hash * 33) ^ c */
+		hash = ((hash << 5) + hash) ^ c;
 	}
-	return h;
+	return hash;
 }
 
 static cpu_state_t *cpu_state_get(const char *name)
 {
-	uint32_t h = pjw(name, 0) % MAX_STATES;
+	uint32_t h = hash_djb2a(name, 0) % MAX_STATES;
 	cpu_state_t *s = cpu_states[h];
 	size_t len;
 	char *ptr;
@@ -2027,7 +2023,7 @@ static cpu_state_t *cpu_state_get(const char *name)
 
 static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
 {
-	uint32_t h = pjw(state, cpu_id) % MAX_CPUS;
+	uint32_t h = hash_djb2a(state, cpu_id) % MAX_CPUS;
 	cpu_info_t *ci = cpu_info[h];
 	FILE *fp;
 	char path[PATH_MAX];
