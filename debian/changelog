@@ -1,3 +1,13 @@
+powerstat (0.02.07-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Manual: re-work some parts of the manual
+  * Manual: add missong comma in SEE ALSO list
+  * Move structure links to head of structures
+  * Use a more efficient hashing function
+
+ -- Colin King <colin.king@canonical.com>  Sat, 28 Nov 2015 17:40:42 +0000
+
 powerstat (0.02.06-1) unstable; urgency=medium
 
   * Makefile: bump version
