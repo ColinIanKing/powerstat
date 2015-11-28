@@ -105,14 +105,14 @@ typedef enum {
  *  C-State information, 1 for each unique C-state
  */
 typedef struct cpu_state {
+	struct cpu_state *hash_next;	/* next in hash table */
+	struct cpu_state *list_next;	/* linked list of C-states */
+	struct cpu_info  *cpu_info_list; /* linked list of CPUs that have this state */
 	char 		*name;		/* C-State name, e.g. C1E-IVB */
 	char		*name_short;	/* short name, e.g. C1E */
 	uint64_t	latency;	/* latency */
 	uint64_t	usage_total;	/* total usage count */
 	double		resident;	/* percentage time resident in this state */
-	struct cpu_state *hash_next;	/* next in hash table */
-	struct cpu_state *list_next;	/* linked list of C-states */
-	struct cpu_info  *cpu_info_list; /* linked list of CPUs that have this state */
 } cpu_state_t;
 
 /*
@@ -120,6 +120,8 @@ typedef struct cpu_state {
  * N-CPUs x N-CPU states
  */
 typedef struct cpu_info {
+	struct cpu_info	*hash_next;	/* Next in hash table */
+	struct cpu_info *list_next;	/* Next in list of cpu_infos list */
 	uint32_t	cpu_id;		/* CPU ID */
 	char		*state;		/* C-State sysfs name, e.g 'state2' */
 	cpu_state_t 	*cpu_state;	/* C-State info */
@@ -132,8 +134,6 @@ typedef struct cpu_info {
 	uint64_t	prev_usage;	/* Previous usage count */
 	uint64_t	usage;		/* Current usage count */
 	uint64_t	usage_diff;	/* Difference in usage count */
-	struct cpu_info	*hash_next;	/* Next in hash table */
-	struct cpu_info *list_next;	/* Next in list of cpu_infos list */
 } cpu_info_t;
 
 
@@ -228,20 +228,20 @@ typedef struct {
 
 /* RAPL domain info */
 typedef struct rapl_info {
+	struct rapl_info *next;		/* Next RAPL domain */
 	char *name;			/* RAPL name */
 	char *domain_name;		/* RAPL domain name */
 	double max_energy_uj;		/* Energy in micro Joules */
 	double last_energy_uj;		/* Last energy reading in micro Joules */
 	double t_last;			/* Time of last reading */
 	bool is_package;		/* Is it a package? */
-	struct rapl_info *next;		/* Next RAPL domain */
 } rapl_info_t;
 
 /* Thermal zone info */
 typedef struct tz_info {
+	struct tz_info *next;		/* Next TZ */
 	char *name;			/* Thermal Zone pathname */
 	char *type;			/* Thermal Zone type */
-	struct tz_info *next;		/* Next TZ */
 } tz_info_t;
 
 #if defined(POWERSTAT_X86)
