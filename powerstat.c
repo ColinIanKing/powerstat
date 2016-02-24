@@ -412,7 +412,7 @@ static const char *cpu_freq_format(double freq)
 		}
 	}
 
-	snprintf(buffer, sizeof(buffer), "%5.2f %-5s",
+	snprintf(buffer, sizeof(buffer), "%5.2f %-4s",
 		freq / scale, suffix);
 
 	return buffer;
@@ -936,10 +936,16 @@ static void stats_headings(void)
 	uint8_t i;
 
 	if (opts & OPTS_USE_NETLINK)
-		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts ");
+		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts");
 	else
-		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s  Watts ");
+		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s  Watts");
 
+	if (opts & (OPTS_DOMAIN_STATS |
+		    OPTS_THERMAL_ZONE |
+		    OPTS_CPU_FREQ |
+		    OPTS_GPU))
+		putchar(' ');
+		   
 	if (opts & OPTS_DOMAIN_STATS) {
 		for (i = 0; i < power_domains; i++)
 			printf(" %6.6s",
@@ -952,7 +958,7 @@ static void stats_headings(void)
 	if (opts & OPTS_CPU_FREQ)
 		printf(" %9.9s", "CPU Freq");
 	if (opts & OPTS_GPU)
-		printf(" %9.9s", "GPU Watts");
+		printf(" %6.6s", "GPU W");
 	printf("\n");
 }
 
@@ -965,9 +971,9 @@ static void stats_ruler(void)
 	uint8_t i;
 
 	if (opts & OPTS_USE_NETLINK)
-		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------");
+		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------ ");
 	else
-		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ------");
+		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ------ ");
 
 	if (opts & OPTS_DOMAIN_STATS) {
 		for (i = 0; i < power_domains; i++)
@@ -980,7 +986,7 @@ static void stats_ruler(void)
 	if (opts & OPTS_CPU_FREQ)
 		printf(" ---------");
 	if (opts & OPTS_GPU)
-		printf(" ---------");
+		printf(" ------");
 	printf("\n");
 }
 
@@ -1015,9 +1021,9 @@ static void stats_print(
 
 	if (summary) {
 		if (s->inaccurate[POWER_TOTAL])
-			(void)snprintf(buf, sizeof(buf), " -N/A-");
+			(void)snprintf(buf, sizeof(buf), " -N/A- ");
 		else
-			(void)snprintf(buf, sizeof(buf), "%6.2f",
+			(void)snprintf(buf, sizeof(buf), "%6.2f ",
 				s->value[POWER_TOTAL]);
 	} else {
 		(void)snprintf(buf, sizeof(buf), "%6.2f%s",
@@ -1067,7 +1073,7 @@ static void stats_print(
 		if (s->inaccurate[POWER_GPU])
 			printf(" -N/A-");
 		else
-			printf(" %6.2f", s->value[POWER_GPU]);
+			printf(" %5.2f", s->value[POWER_GPU]);
 	}
 	printf("\n");
 }
