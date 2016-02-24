@@ -2723,8 +2723,20 @@ static int monitor(const int sock)
 	}
 
 	printf("Summary:\n");
-	printf("%6.2f Watts on average with standard deviation %-6.2f\n",
-		average.value[POWER_TOTAL], stddev.value[POWER_TOTAL]);
+#if defined(POWERSTAT_X86)
+	if (opts & OPTS_RAPL) {
+		printf("CPU: %6.2f Watts on average with standard deviation %-6.2f\n",
+			average.value[POWER_TOTAL], stddev.value[POWER_TOTAL]);
+	} else
+#endif
+	{
+		printf("System: %6.2f Watts on average with standard deviation %-6.2f\n",
+			average.value[POWER_TOTAL], stddev.value[POWER_TOTAL]);
+	}
+	if (opts & OPTS_GPU) {
+		printf("GPU: %6.2f Watts on average with standard deviation %-6.2f\n",
+			average.value[POWER_GPU], stddev.value[POWER_GPU]);
+	}
 
 #if defined(POWERSTAT_X86)
 	if (opts & OPTS_RAPL) {
