@@ -77,6 +77,8 @@
 #define GOT_PPID		(0x02)
 #define GOT_ALL			(GOT_TGID | GOT_PPID)
 
+#define I915_ENERGY_UJ		"/sys/kernel/debug/dri/0/i915_energy_uJ"
+
 /* Statistics gathered from /proc/stat and process activity */
 typedef enum {
 	CPU_USER = 0,
@@ -96,6 +98,7 @@ typedef enum {
 	PROC_EXEC,
 	PROC_EXIT,
 	POWER_TOTAL,
+	POWER_GPU,
 	POWER_DOMAIN_0,
 	THERMAL_ZONE_0 = POWER_DOMAIN_0 + MAX_POWER_DOMAINS,
 	MAX_VALUES = THERMAL_ZONE_0 + MAX_THERMAL_ZONES,
@@ -177,6 +180,7 @@ static const char *cpu_path = "/sys/devices/system/cpu";
 #define OPTS_CPU_FREQ		(0x1000)	/* Average CPU frequency */
 #define OPTS_NO_STATS_HEADINGS	(0x2000)	/* No stats headings */
 #define OPTS_THERMAL_ZONE	(0x4000)	/* Thermal zones */
+#define OPTS_GPU		(0x8000)	/* graphics */
 
 #define OPTS_USE_NETLINK	(OPTS_SHOW_PROC_ACTIVITY | \
 				 OPTS_REDO_NETLINK_BUSY |  \
@@ -947,6 +951,8 @@ static void stats_headings(void)
 	}
 	if (opts & OPTS_CPU_FREQ)
 		printf(" %9.9s", "CPU Freq");
+	if (opts & OPTS_GPU)
+		printf(" %9.9s", "GPU Watts");
 	printf("\n");
 }
 
@@ -972,6 +978,8 @@ static void stats_ruler(void)
 			printf(" ------");
 	}
 	if (opts & OPTS_CPU_FREQ)
+		printf(" ---------");
+	if (opts & OPTS_GPU)
 		printf(" ---------");
 	printf("\n");
 }
@@ -1055,6 +1063,12 @@ static void stats_print(
 	}
 	if (opts & OPTS_CPU_FREQ)
 		printf(" %s", cpu_freq_format(s->value[CPU_FREQ]));
+	if (opts & OPTS_GPU) {
+		if (s->inaccurate[POWER_GPU])
+			printf(" -N/A-");
+		else
+			printf(" %6.2f", s->value[POWER_GPU]);
+	}
 	printf("\n");
 }
 
@@ -1803,6 +1817,48 @@ static int power_get_rapl(
 }
 #endif
 
+static int power_get_gpu_i915(
+	const stats_t *const s1,
+	stats_t *s2,
+	stats_t *const res)
+{
+#if defined(POWERSTAT_X86)
+	uint64_t val;
+	int ret;
+
+	if (file_get_uint64(I915_ENERGY_UJ, &val) < 0) {
+		s2->value[POWER_GPU] = 0.0;
+		res->value[POWER_GPU] = 0.0;
+		res->inaccurate[POWER_GPU] = true;
+		ret = -1;
+	} else {
+		s2->value[POWER_GPU] = (double)val / 1000000.0;
+		res->value[POWER_GPU] = stats_sane(s1, s2, POWER_GPU);
+		res->inaccurate[POWER_GPU] = false;
+		ret = 0;
+	}
+	return ret;
+#else
+	(void)s1;
+	(void)s2;
+	(void)res;
+
+	return -1;
+#endif
+}
+
+static void power_get_gpu(
+	const stats_t *const s1,
+	stats_t *s2,
+	stats_t *const res)
+{
+
+	if (power_get_gpu_i915(s1, s2, res) < 0) {
+		s2->value[POWER_GPU] = 0.0;
+		res->value[POWER_GPU] = 0.0;
+		res->inaccurate[POWER_GPU] = true;
+	}
+}
 
 /*
  *  tz_free_list()
@@ -1947,8 +2003,8 @@ static int power_get(
 	int i;
 
 	for (i = POWER_TOTAL; i < POWER_DOMAIN_0 + MAX_POWER_DOMAINS; i++) {
-		stats->value[i] = i;
-		stats->inaccurate[i] = 0.0;
+		stats->value[i] = 0.0;
+		stats->inaccurate[i] = true;
 	}
 
 #if defined(POWERSTAT_X86)
@@ -2435,6 +2491,8 @@ static int monitor(const int sock)
 	}
 	if (opts & OPTS_CSTATES)
 		cpu_states_update();
+	if (opts & OPTS_GPU)
+		power_get_gpu(&s2, &s1, &stats[readings]);
 
 	while (!stop_recv && (readings < max_readings)) {
 		double time_now, secs;
@@ -2510,6 +2568,7 @@ static int monitor(const int sock)
 				continue;
 			}
 
+
 			if ((opts & OPTS_REDO_WHEN_NOT_IDLE) &&
 			    (!stats[readings].inaccurate[CPU_IDLE]) &&
 			    (stats[readings].value[CPU_IDLE] < idle_threshold)) {
@@ -2528,6 +2587,9 @@ static int monitor(const int sock)
 			}
 			if (opts & OPTS_THERMAL_ZONE)
 				tz_get_temperature(&stats[readings]);
+
+			if (opts & OPTS_GPU)
+				power_get_gpu(&s1, &s2, &stats[readings]);
 
 			if (!discharging) {
 				free(stats);
@@ -2732,6 +2794,7 @@ void show_help(char *const argv[])
 	printf("\t-d specify delay before starting, default is %" PRId32 " seconds\n", start_delay);
 	printf("\t-D show RAPL domain power measurements (enables -R option)\n");
 	printf("\t-f show average CPU frequency\n");
+	printf("\t-g show GPU power (currently just i915)\n");
 	printf("\t-h show help\n");
 	printf("\t-H show spread of measurements with power histogram\n");
 	printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
@@ -2757,11 +2820,14 @@ int main(int argc, char * const argv[])
 	struct sigaction new_action;
 	stats_t dummy_stats;
 
+	if (geteuid() == 0)
+		opts |= OPTS_ROOT_PRIV;
+
 	for (;;) {
 #if defined(POWERSTAT_X86)
-		int c = getopt(argc, argv, "abd:cDfhHi:nprszStR");
+		int c = getopt(argc, argv, "abd:cDfghHi:nprszStR");
 #else
-		int c = getopt(argc, argv, "abd:cDfhHi:nprszSt");
+		int c = getopt(argc, argv, "abd:cDfghHi:nprszSt");
 #endif
 		if (c == -1)
 			break;
@@ -2771,6 +2837,8 @@ int main(int argc, char * const argv[])
 				 OPTS_CPU_FREQ |
 				 OPTS_HISTOGRAM |
 				 OPTS_THERMAL_ZONE);
+			if (opts & OPTS_ROOT_PRIV)
+				 opts |= OPTS_GPU;
 			break;
 		case 'b':
 			opts |= OPTS_REDO_WHEN_NOT_IDLE;
@@ -2796,6 +2864,9 @@ int main(int argc, char * const argv[])
 			break;
 		case 'f':
 			opts |= OPTS_CPU_FREQ;
+			break;
+		case 'g':
+			opts |= OPTS_GPU;
 			break;
 		case 'h':
 			show_help(argv);
@@ -2903,10 +2974,9 @@ int main(int argc, char * const argv[])
 	if (max_readings < 10)
 		fprintf(stderr, "Number of readings low, results may be inaccurate.\n");
 
-	if (geteuid() == 0)
-		opts |= OPTS_ROOT_PRIV;
-	else if (opts & OPTS_USE_NETLINK) {
-		fprintf(stderr, "%s needs to be run with root privilege when using -p, -r, -s options.\n", argv[0]);
+	if (!(opts & OPTS_ROOT_PRIV) &&
+	    (opts & (OPTS_USE_NETLINK | OPTS_GPU))) {
+		fprintf(stderr, "%s needs to be run with root privilege when using -g, -p, -r, -s options.\n", argv[0]);
 		exit(ret);
 	}
 
