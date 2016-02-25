@@ -1614,6 +1614,10 @@ static void rapl_free_list(void)
 	}
 }
 
+/*
+ *  rapl_get_domain()
+ *	get RAPL domain name for nth domain
+ */
 static const char *rapl_get_domain(const int n)
 {
 	int i;
@@ -1823,6 +1827,10 @@ static int power_get_rapl(
 }
 #endif
 
+/*
+ *  power_get_gpu_i915()
+ *	get Intel i915 GPU power stats
+ */
 static int power_get_gpu_i915(
 	const stats_t *const s1,
 	stats_t *s2,
@@ -1853,6 +1861,10 @@ static int power_get_gpu_i915(
 #endif
 }
 
+/*
+ *  power_get_gpu()
+ *	get generic GPU power stats
+ */
 static void power_get_gpu(
 	const stats_t *const s1,
 	stats_t *s2,
@@ -2046,6 +2058,11 @@ static uint32_t hash_djb2a(const char *str, const uint32_t id)
 	return hash;
 }
 
+/*
+ *  cpu_state_get()
+ *	get CPU C state based on name. We try to cache
+ * 	these in cpu_states to make lookup faster
+ */
 static cpu_state_t *cpu_state_get(const char *name)
 {
 	uint32_t h = hash_djb2a(name, 0) % MAX_STATES;
@@ -2083,6 +2100,10 @@ static cpu_state_t *cpu_state_get(const char *name)
 	return s;
 }
 
+/*
+ *  cpu_info_get()
+ *	get per CPU active state information
+ */
 static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
 {
 	uint32_t h = hash_djb2a(state, cpu_id) % MAX_CPUS;
@@ -2143,6 +2164,11 @@ static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
 	return ci;
 }
 
+
+/*
+ *  cpu_info_update()
+ *	update CPU state info
+ */
 static int cpu_info_update(cpu_info_t *ci)
 {
 	char path[PATH_MAX];
@@ -2178,6 +2204,10 @@ static int cpu_info_update(cpu_info_t *ci)
 	return 0;
 }
 
+/*
+ *  cpu_states_update()
+ *	update CPU state info for all CPUs
+ */
 static void cpu_states_update(void)
 {
 	struct dirent **cpu_list;
@@ -2222,6 +2252,10 @@ static void cpu_states_update(void)
 		free(cpu_list);
 }
 
+/*
+ *  cpu_states_free()
+ *	free cache of CPU state info
+ */
 static void cpu_states_free(void)
 {
 	cpu_state_t *s = cpu_states_list;
@@ -2245,6 +2279,10 @@ static void cpu_states_free(void)
 	}
 }
 
+/*
+ *  cpu_states_dump()
+ *	dump out gather CPU state statistics
+ */
 static void cpu_states_dump(void)
 {
 	cpu_state_t *s;
