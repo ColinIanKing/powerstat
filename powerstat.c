@@ -1071,7 +1071,7 @@ static void stats_print(
 		printf(" %s", cpu_freq_format(s->value[CPU_FREQ]));
 	if (opts & OPTS_GPU) {
 		if (s->inaccurate[POWER_GPU])
-			printf(" -N/A-");
+			printf("  -N/A-");
 		else
 			printf(" %6.2f", s->value[POWER_GPU]);
 	}
