@@ -1600,7 +1600,7 @@ static int power_get_proc_acpi(
  *  rapl_free_list()
  *	free RAPL list
  */
-void rapl_free_list(void)
+static void rapl_free_list(void)
 {
 	rapl_info_t *rapl = rapl_list;
 
@@ -1870,7 +1870,7 @@ static void power_get_gpu(
  *  tz_free_list()
  *	free thermal zone list
  */
-void tz_free_list(void)
+static void tz_free_list(void)
 {
 	tz_info_t *tz = tz_list;
 
@@ -1973,7 +1973,7 @@ static int tz_get_zones(void)
  *  tz_get_temperature()
  *	get temperatures from thermal zones
  */
-static int tz_get_temperature( stats_t *stats)
+static int tz_get_temperature(stats_t *stats)
 {
 	tz_info_t *tz;
 	int n = 0;
@@ -2802,7 +2802,7 @@ static int monitor(const int sock)
  *  show_help()
  *	simple help
  */
-void show_help(char *const argv[])
+static void show_help(char *const argv[])
 {
 	printf("%s, version %s\n\n", app_name, VERSION);
 	printf("usage: %s [options] [delay [count]]\n", argv[0]);
