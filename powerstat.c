@@ -412,7 +412,7 @@ static const char *cpu_freq_format(double freq)
 		}
 	}
 
-	snprintf(buffer, sizeof(buffer), "%5.2f %-4s",
+	snprintf(buffer, sizeof(buffer), "%5.2f %-3s",
 		freq / scale, suffix);
 
 	return buffer;
@@ -1073,7 +1073,7 @@ static void stats_print(
 		if (s->inaccurate[POWER_GPU])
 			printf(" -N/A-");
 		else
-			printf(" %5.2f", s->value[POWER_GPU]);
+			printf(" %6.2f", s->value[POWER_GPU]);
 	}
 	printf("\n");
 }
