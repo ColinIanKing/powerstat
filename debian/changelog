@@ -1,3 +1,18 @@
+powerstat (0.02.08-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Move N/A message for GPU power right one char
+  * Add some more per function comments
+  * constify a few more func args
+  * Make all non-main functions static
+  * Minor fix up on GPU Watts field
+  * Add GPU average stats
+  * Clean up column formatting
+  * add -g GPU stats
+  * Update and correct copyright years
+
+ -- Colin King <colin.king@canonical.com>  Thu, 25 Feb 2016 14:34:07 +0000
+
 powerstat (0.02.07-1) unstable; urgency=medium
 
   * Makefile: bump version
