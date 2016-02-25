@@ -397,7 +397,7 @@ static int file_get_uint64(const char *const file, uint64_t *val)
  *  cpu_freq_format()
  *	scale cpu freq into a human readable form
  */
-static const char *cpu_freq_format(double freq)
+static const char *cpu_freq_format(const double freq)
 {
 	static char buffer[40];
 	char *suffix = "EHz";
@@ -1973,7 +1973,7 @@ static int tz_get_zones(void)
  *  tz_get_temperature()
  *	get temperatures from thermal zones
  */
-static int tz_get_temperature(stats_t *stats)
+static int tz_get_temperature(stats_t *const stats)
 {
 	tz_info_t *tz;
 	int n = 0;
