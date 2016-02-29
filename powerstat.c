@@ -1108,7 +1108,6 @@ static void stats_average_stddev_min_max(
 				valid++;
 			}
 		}
-
 		if (valid) {
 			average->value[j] = total / (double)valid;
 			total = 0.0;
@@ -1797,12 +1796,13 @@ static int power_get_rapl(
 
 			if (first || (t_delta <= 0.0)) {
 				stats->value[POWER_DOMAIN_0 + n] = 0.0;
-				stats->inaccurate[POWER_TOTAL] = true;
+				stats->inaccurate[POWER_DOMAIN_0 + n] = true;
 			} else {
 				stats->value[POWER_DOMAIN_0 + n] =
 					(ujoules - last_energy_uj) / (t_delta * 1000000.0);
+				stats->inaccurate[POWER_DOMAIN_0 + n] = false;
 			}
-			if (rapl->is_package)
+			if (rapl->is_package && !stats->inaccurate[POWER_DOMAIN_0 + n])
 				stats->value[POWER_TOTAL] += stats->value[POWER_DOMAIN_0 + n];
 			n++;
 			*discharging = true;
