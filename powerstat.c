@@ -67,7 +67,7 @@
 #define IDLE_THRESHOLD		(98)	/* Less than this and we assume the device is not idle */
 
 #define MAX_POWER_DOMAINS	(16)	/* Maximum number of power domains allowed */
-#define MAX_THERMAL_ZONES	(16)
+#define MAX_THERMAL_ZONES	(16)	/* Maximum number of thermal zones allowed */
 
 /* Histogram specific constants */
 #define MAX_DIVISIONS		(10)
@@ -78,6 +78,9 @@
 #define GOT_ALL			(GOT_TGID | GOT_PPID)
 
 #define I915_ENERGY_UJ		"/sys/kernel/debug/dri/0/i915_energy_uJ"
+
+#define MAX(x, y)		(x) > (y) ? (x) : (y)
+#define MIN(x, y)		(x) > (y) ? (y) : (x)
 
 /* Statistics gathered from /proc/stat and process activity */
 typedef enum {
@@ -1708,7 +1711,7 @@ static int rapl_get_domains(void)
 		n++;
 	}
 	(void)closedir(dir);
-	power_domains = n;
+	power_domains = MIN(n, MAX_POWER_DOMAINS);
 
 	if (!n)
 		printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
@@ -1722,10 +1725,10 @@ static int rapl_get_domains(void)
 static char *power_get_rapl_domain_names(void)
 {
 	char *names = NULL;
-	size_t len = 0;
+	size_t len = 0, n = 0;
 	rapl_info_t *rapl;
 
-	for (rapl = rapl_list; rapl; rapl = rapl->next) {
+	for (rapl = rapl_list; rapl && (n < MAX_POWER_DOMAINS); rapl = rapl->next, n++) {
 		char new_name[strlen(rapl->domain_name) + 3];
 		char *tmp;
 		size_t new_len;
@@ -1768,7 +1771,7 @@ static int power_get_rapl(
 
 	t_now = gettime_to_double();
 
-	for (rapl = rapl_list; rapl; rapl = rapl->next) {
+	for (rapl = rapl_list; rapl && (n < MAX_POWER_DOMAINS); rapl = rapl->next) {
 		char path[PATH_MAX];
 		FILE *fp;
 		double ujoules;
@@ -1976,7 +1979,7 @@ static int tz_get_zones(void)
 		n++;
 	}
 	(void)closedir(dir);
-	thermal_zones = n;
+	thermal_zones = MIN(n, MAX_THERMAL_ZONES);
 
 	return n;
 }
@@ -1990,7 +1993,7 @@ static int tz_get_temperature(stats_t *const stats)
 	tz_info_t *tz;
 	int n = 0;
 
-	for (tz = tz_list; tz; tz = tz->next) {
+	for (tz = tz_list; tz && (n < thermal_zones); tz = tz->next) {
 		char path[PATH_MAX];
 		uint64_t temp;
 
