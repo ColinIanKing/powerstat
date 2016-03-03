@@ -1,3 +1,11 @@
+powerstat (0.02.09-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Do not overflow power domain and thermal zone buffers (LP: #1551297)
+  * Tag RAPL stats as valid so stats show up in avg, std.dev. (LP: #1551287)
+
+ -- Colin King <colin.king@canonical.com>  Thu, 3 Mar 2016 11:52:11 +0000
+
 powerstat (0.02.08-1) unstable; urgency=medium
 
   * Makefile: bump version
