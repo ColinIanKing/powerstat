@@ -1,3 +1,10 @@
+powerstat (0.02.10-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * debian/control: update Standards-Version to 3.9.8
+
+ -- Colin King <colin.king@canonical.com>  Thu, 5 May 2016 13:29:22 +0100
+
 powerstat (0.02.09-1) unstable; urgency=medium
 
   * Makefile: bump version
