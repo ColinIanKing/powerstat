@@ -82,6 +82,9 @@
 #define MAX(x, y)		(x) > (y) ? (x) : (y)
 #define MIN(x, y)		(x) > (y) ? (y) : (x)
 
+#define FLOAT_TINY		(0.0000001)
+#define FLOAT_CMP(a, b)		(fabs((a) - (b)) < FLOAT_TINY)
+
 /* Statistics gathered from /proc/stat and process activity */
 typedef enum {
 	CPU_USER = 0,
@@ -1172,7 +1175,7 @@ static void stats_histogram(
 	if (valid <= 1)
 		return;
 
-	if (max - min == 0) {
+	if (FLOAT_CMP(max - min, 0.0)) {
 		printf("\nRange is zero, cannot produce histogram of %s\n", short_title);
 		return;
 	}
@@ -1547,7 +1550,7 @@ static int power_get_proc_acpi(
 		 * 'present voltage' field and instead returns this in
 		 * the design_voltage field, so work around this.
 		 */
-		if (voltage == 0.0) {
+		if (FLOAT_CMP(voltage, 0.0)) {
 			sprintf(filename, "/proc/acpi/battery/%s/info", dirent->d_name);
 			if ((file = fopen(filename, "r")) != NULL) {
 				while (fgets(buffer, sizeof(buffer), file) != NULL) {
