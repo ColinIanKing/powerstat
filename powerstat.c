@@ -2807,7 +2807,6 @@ static int monitor(const int sock)
 	if (opts & OPTS_CSTATES)
 		cpu_states_dump();
 
-
 	if (opts & OPTS_HISTOGRAM) {
 		stats_histogram(stats, readings, POWER_TOTAL,
 			"power measurements",
@@ -2840,7 +2839,6 @@ static int monitor(const int sock)
 	free(stats);
 	return 0;
 }
-
 
 /*
  *  show_help()
