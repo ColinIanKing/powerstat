@@ -1,3 +1,14 @@
+powerstat (0.02.11-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Makefile: add mascot to dist rule
+  * Remove two blank lines
+  * Allow float compares a little slop
+  * Makefile: add PEDANTIC flags
+  * Add powerstat mascot
+
+ -- Colin King <colin.king@canonical.com>  Thu, 1 Dec 2016 12:21:12 +0100
+
 powerstat (0.02.10-1) unstable; urgency=medium
 
   * Makefile: bump version
