@@ -11,13 +11,6 @@ parts:
         build-packages:
             - gcc
             - make
-            - zlib1g-dev
-            - libbsd-dev
-            - libattr1-dev
-            - libkeyutils-dev
-            - libapparmor-dev
-            - libaio-dev
-            - libcap-dev
 
 apps:
     powerstat:
