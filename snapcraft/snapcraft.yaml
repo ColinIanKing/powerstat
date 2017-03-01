@@ -1,0 +1,25 @@
+name: powerstat
+version: 0.02.11-20161201-286-0201b27
+summary: computer power measuring tool
+description: Powerstat measures the power consumption of a computer that has a battery power source or an Intel RAPL power domain.  The output is like vmstat but also shows power consumption statistics.  At the end of a run, powerstat will calculate the average, standard deviation and min/max of the gathered data.
+confinement: devmode
+
+parts:
+    powerstat:
+        plugin: make
+        source: git://kernel.ubuntu.com/cking/powerstat
+        build-packages:
+            - gcc
+            - make
+            - zlib1g-dev
+            - libbsd-dev
+            - libattr1-dev
+            - libkeyutils-dev
+            - libapparmor-dev
+            - libaio-dev
+            - libcap-dev
+
+apps:
+    powerstat:
+        command: usr/bin/powerstat
+
