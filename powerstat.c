@@ -1626,7 +1626,6 @@ static void rapl_free_list(void)
 static const char *rapl_get_domain(const int n)
 {
 	int i;
-	static char buf[128];
 
 	rapl_info_t *rapl = rapl_list;
 
@@ -1635,6 +1634,8 @@ static const char *rapl_get_domain(const int n)
 	}
 	if (rapl) {
 		if (rapl->is_package) {
+			static char buf[128];
+
 			snprintf(buf, sizeof(buf), "pkg-%s", rapl->domain_name + 8);
 			return buf;
 		}
