@@ -1,3 +1,17 @@
+powerstat (0.02.12-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Makefile: add snapcraft files to dist rule
+  * Fix incorrect GPU stats when sample rate is not 1 second (LP: #1699134)
+  * snapcraft: add default type and grade keys
+  * snapcraft: Makefile: remove icon hack
+  * reduce the scope of the variable 'buf'
+  * snapcraft.yaml: remove bogos unnecessary libs
+  * Add snapcraft files
+  * update copyright year
+
+ -- Colin King <colin.king@canonical.com>  Tue, 20 Jun 2017 14:00:01 +0100
+
 powerstat (0.02.11-1) unstable; urgency=medium
 
   * Makefile: bump version
