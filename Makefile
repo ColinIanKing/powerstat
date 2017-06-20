@@ -42,7 +42,7 @@ powerstat.8.gz: powerstat.8
 dist:
 	rm -rf powerstat-$(VERSION)
 	mkdir powerstat-$(VERSION)
-	cp -rp Makefile mascot powerstat.c powerstat.8 COPYING \
+	cp -rp Makefile mascot powerstat.c powerstat.8 COPYING snapcraft \
 		powerstat-$(VERSION)
 	tar -zcf powerstat-$(VERSION).tar.gz powerstat-$(VERSION)
 	rm -rf powerstat-$(VERSION)
