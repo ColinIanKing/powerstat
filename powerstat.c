@@ -1853,9 +1853,10 @@ static int power_get_gpu_i915(
 		res->inaccurate[POWER_GPU] = true;
 		ret = -1;
 	} else {
-		s2->value[POWER_GPU] = (double)val / 1000000.0;
-		res->value[POWER_GPU] = stats_sane(s1, s2, POWER_GPU);
+		s2->value[POWER_GPU] = ((double)val / 1000000.0) / sample_delay;
+		s2->inaccurate[POWER_GPU] = false;
 		res->inaccurate[POWER_GPU] = false;
+		res->value[POWER_GPU] = stats_sane(s1, s2, POWER_GPU);
 		ret = 0;
 	}
 	return ret;
