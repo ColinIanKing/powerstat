@@ -582,7 +582,7 @@ static int log_printf(const char *const fmt, ...)
 	(void)vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 
-	if ((log_item = calloc(1, sizeof(log_item_t))) == NULL) {
+	if ((log_item = calloc(1, sizeof(*log_item))) == NULL) {
 		fprintf(stderr, "Out of memory allocating log item.\n");
 		return -1;
 	}
@@ -1403,7 +1403,7 @@ static int power_get_sys_fs(
 				double watts_rate = 0.0;
 				double watts_left = 0.0;
 
-				while (fgets(buffer, sizeof(buffer)-1, fp) != NULL) {
+				while (fgets(buffer, sizeof(buffer) - 1, fp) != NULL) {
 					if (strstr(buffer, SYS_FIELD_STATUS_DISCHARGING))
 						*discharging = true;
 
@@ -2086,7 +2086,7 @@ static cpu_state_t *cpu_state_get(const char *name)
 			return s;
 		s = s->hash_next;
 	}
-	if ((s = calloc(1, sizeof(cpu_state_t))) == NULL)
+	if ((s = calloc(1, sizeof(*s))) == NULL)
 		return NULL;
 	if ((s->name = strdup(name)) == NULL) {
 		free(s);
@@ -2130,7 +2130,7 @@ static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
 		ci = ci->hash_next;
 	}
 
-	if ((ci = calloc(1, sizeof(cpu_info_t))) == NULL)
+	if ((ci = calloc(1, sizeof(*ci))) == NULL)
 		return NULL;
 	ci->cpu_id = cpu_id;
 	if ((ci->state = strdup(state)) == NULL) {
@@ -2462,7 +2462,7 @@ static int proc_info_add(const pid_t pid)
 
 	memset(cmdline, 0, sizeof(cmdline));	/* keep valgrind happy */
 
-	if ((info = calloc(1, sizeof(proc_info_t))) == NULL) {
+	if ((info = calloc(1, sizeof(*info))) == NULL) {
 		fprintf(stderr, "Cannot allocate all proc info.\n");
 		return -1;
 	}
@@ -2521,7 +2521,7 @@ static int monitor(const int sock)
 	struct nlmsghdr *nlmsghdr;
 	double time_start;
 
-	if ((stats = calloc((size_t)max_readings, sizeof(stats_t))) == NULL) {
+	if ((stats = calloc((size_t)max_readings, sizeof(*stats))) == NULL) {
 		fprintf(stderr, "Cannot allocate statistics table.\n");
 		return -1;
 	}
