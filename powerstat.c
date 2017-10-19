@@ -1160,7 +1160,7 @@ static void stats_histogram(
 	int i, valid, digits = 0, width;
 	double min = DBL_MAX, max = -DBL_MAX, division, prev;
 	unsigned int bucket[MAX_DIVISIONS], max_bucket = 0;
-	char buf[32];
+	char buf[64];
 
 	(void)memset(bucket, 0, sizeof(bucket));
 
