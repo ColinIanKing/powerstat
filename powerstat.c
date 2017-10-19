@@ -80,6 +80,8 @@
 
 #define I915_ENERGY_UJ		"/sys/kernel/debug/dri/0/i915_energy_uJ"
 
+#define SIZEOF_ARRAY(a)		(sizeof(a) / sizeof(a[0]))
+
 #define MAX(x, y)		(x) > (y) ? (x) : (y)
 #define MIN(x, y)		(x) > (y) ? (y) : (x)
 
@@ -327,7 +329,6 @@ static const int signals[] = {
 #ifdef SIGVTALRM
 	SIGVTALRM,
 #endif
-	-1,
 };
 
 /*
@@ -3068,7 +3069,7 @@ int main(int argc, char * const argv[])
 	}
 
 	memset(&new_action, 0, sizeof(new_action));
-	for (i = 0; signals[i] != -1; i++) {
+	for (i = 0; i < (int)SIZEOF_ARRAY(signals); i++) {
 		new_action.sa_handler = handle_sig;
 		sigemptyset(&new_action.sa_mask);
 		new_action.sa_flags = 0;
