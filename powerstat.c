@@ -1409,32 +1409,32 @@ static int power_get_sys_fs(
 
 					if (strstr(buffer, SYS_FIELD_AMPS_LEFT) &&
 					    strlen(buffer) > sizeof(SYS_FIELD_AMPS_LEFT) - 1) {
-						sscanf(buffer + sizeof(SYS_FIELD_AMPS_LEFT) - 1, "%12d", &val);
-						amps_left = (double)val / 1000000.0;
+						if (sscanf(buffer + sizeof(SYS_FIELD_AMPS_LEFT) - 1, "%12d", &val) == 1)
+							amps_left = (double)val / 1000000.0;
 					}
 
 					if (strstr(buffer, SYS_FIELD_WATTS_LEFT) &&
 					    strlen(buffer) > sizeof(SYS_FIELD_WATTS_LEFT) - 1) {
-						sscanf(buffer + sizeof(SYS_FIELD_WATTS_LEFT) - 1, "%12d", &val);
-						watts_left = (double)val / 1000000.0;
+						if (sscanf(buffer + sizeof(SYS_FIELD_WATTS_LEFT) - 1, "%12d", &val) == 1)
+							watts_left = (double)val / 1000000.0;
 					}
 
 					if (strstr(buffer, SYS_FIELD_AMPS_RATE) &&
 					    strlen(buffer) > sizeof(SYS_FIELD_AMPS_RATE) - 1) {
-						sscanf(buffer + sizeof(SYS_FIELD_AMPS_RATE) - 1, "%12d", &val);
-						amps_rate = (double)val / 1000000.0;
+						if (sscanf(buffer + sizeof(SYS_FIELD_AMPS_RATE) - 1, "%12d", &val) == 1)
+							amps_rate = (double)val / 1000000.0;
 					}
 
 					if (strstr(buffer, SYS_FIELD_WATTS_RATE) &&
 					    strlen(buffer) > sizeof(SYS_FIELD_WATTS_RATE) - 1) {
-						sscanf(buffer + sizeof(SYS_FIELD_WATTS_RATE) - 1, "%12d", &val);
-						watts_rate = (double)val / 1000000.0;
+						if (sscanf(buffer + sizeof(SYS_FIELD_WATTS_RATE) - 1, "%12d", &val) == 1)
+							watts_rate = (double)val / 1000000.0;
 					}
 
 					if (strstr(buffer, SYS_FIELD_VOLTAGE) &&
 					    strlen(buffer) > sizeof(SYS_FIELD_VOLTAGE) - 1) {
-						sscanf(buffer + sizeof(SYS_FIELD_VOLTAGE) - 1, "%12d", &val);
-						voltage = (double)val / 1000000.0;
+						if (sscanf(buffer + sizeof(SYS_FIELD_VOLTAGE) - 1, "%12d", &val) == 1)
+							voltage = (double)val / 1000000.0;
 					}
 				}
 				total_watts    += watts_rate + voltage * amps_rate;
