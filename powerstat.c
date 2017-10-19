@@ -202,7 +202,8 @@ static const char *cpu_path = "/sys/devices/system/cpu";
 #define SYS_FIELD_AMPS_LEFT		"POWER_SUPPLY_CHARGE_NOW="
 #define SYS_FIELD_STATUS_DISCHARGING  	"POWER_SUPPLY_STATUS=Discharging"
 
-#if defined(__x86_64__) || defined(__x86_64) || defined(__i386__) || defined(__i386)
+#if defined(__x86_64__) || defined(__x86_64) || \
+    defined(__i386__) || defined(__i386)
 #define POWERSTAT_X86
 #endif
 
