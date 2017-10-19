@@ -1,3 +1,17 @@
+powerstat (0.02.13-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Increase temp buf from 16 to 32 bytes, cleans up gcc warning
+  * Add more scanf sanity checking
+  * debian/control: update Standards-version to 4.1.1
+  * voidify function returns
+  * use sizeof an object rather than the objects type
+  * Don't use sentinel for end of signals[], use array size instead
+  * include <sys/uio.h> for writev
+  * powerstat: break wide macro over 2 lines
+
+ -- Colin King <colin.king@canonical.com>  Thu, 19 Oct 2017 09:48:11 +0100
+
 powerstat (0.02.12-1) unstable; urgency=medium
 
   * Makefile: bump version
