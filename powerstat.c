@@ -354,7 +354,7 @@ static void set_priority(void)
 	if ((max = sched_get_priority_max(sched)) < 0)
 		return;
 
-	memset(&param, 0, sizeof(param));
+	(void)memset(&param, 0, sizeof(param));
 	param.sched_priority = max;
 	(void)sched_setscheduler(getpid(), sched, &param);
 }
@@ -421,7 +421,7 @@ static const char *cpu_freq_format(const double freq)
 		}
 	}
 
-	snprintf(buffer, sizeof(buffer), "%5.2f %-3s",
+	(void)snprintf(buffer, sizeof(buffer), "%5.2f %-3s",
 		freq / scale, suffix);
 
 	return buffer;
@@ -441,7 +441,7 @@ static pid_t get_parent_pid(const pid_t pid, bool *is_thread)
 	unsigned int got = 0;
 
 	*is_thread = false;
-	snprintf(path, sizeof(path), "/proc/%u/status", pid);
+	(void)snprintf(path, sizeof(path), "/proc/%u/status", pid);
 	if ((fp = fopen(path, "r")) == NULL)
 		return 0;
 
@@ -462,7 +462,7 @@ static pid_t get_parent_pid(const pid_t pid, bool *is_thread)
 			}
 		}
 	}
-	fclose(fp);
+	(void)fclose(fp);
 
 	if ((got & GOT_ALL) == GOT_ALL) {
 		/*  TGID and PID are not the same if it is a thread */
@@ -527,7 +527,7 @@ static double gettime_to_double(void)
 	struct timeval tv;
 
         if (gettimeofday(&tv, NULL) < 0) {
-                fprintf(stderr, "gettimeofday failed: errno=%d (%s).\n",
+                (void)fprintf(stderr, "gettimeofday failed: errno=%d (%s).\n",
                         errno, strerror(errno));
 		return -1.0;
         }
@@ -583,13 +583,13 @@ static int log_printf(const char *const fmt, ...)
 	va_end(ap);
 
 	if ((log_item = calloc(1, sizeof(*log_item))) == NULL) {
-		fprintf(stderr, "Out of memory allocating log item.\n");
+		(void)fprintf(stderr, "Out of memory allocating log item.\n");
 		return -1;
 	}
 	len = strlen(buffer) + strlen(tmbuffer) + 1;
 	if ((log_item->text = calloc(1, len)) == NULL) {
 		free(log_item);
-		fprintf(stderr, "Out of memory allocating log item text.\n");
+		(void)fprintf(stderr, "Out of memory allocating log item text.\n");
 		return -1;
 	}
 	(void)snprintf(log_item->text, len, "%s%s", tmbuffer, buffer);
@@ -613,10 +613,10 @@ static void log_dump(void)
 	log_item_t *log_item;
 
 	if (infolog.head != NULL)
-		printf("\nLog of fork()/exec()/exit() calls:\n");
+		(void)printf("\nLog of fork()/exec()/exit() calls:\n");
 
 	for (log_item = infolog.head; log_item; log_item = log_item->next)
-		printf("%s", log_item->text);
+		(void)printf("%s", log_item->text);
 }
 
 /*
@@ -660,18 +660,18 @@ static int netlink_connect(void)
     	if ((sock = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_CONNECTOR)) < 0) {
 		if (errno == EPROTONOSUPPORT)
 			return -EPROTONOSUPPORT;
-		fprintf(stderr, "socket failed: errno=%d (%s).\n",
+		(void)fprintf(stderr, "socket failed: errno=%d (%s).\n",
 			errno, strerror(errno));
 		return -1;
 	}
 
-	memset(&addr, 0, sizeof(addr));
+	(void)memset(&addr, 0, sizeof(addr));
 	addr.nl_pid = getpid();
 	addr.nl_family = AF_NETLINK;
 	addr.nl_groups = CN_IDX_PROC;
 
 	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-		fprintf(stderr, "Bind failed: errno=%d (%s).\n",
+		(void)fprintf(stderr, "Bind failed: errno=%d (%s).\n",
 			errno, strerror(errno));
 		(void)close(sock);
 		return -1;
@@ -691,14 +691,14 @@ static int netlink_listen(const int sock)
 	struct cn_msg cn_msg;
 	enum proc_cn_mcast_op op;
 
-	memset(&nlmsghdr, 0, sizeof(nlmsghdr));
+	(void)memset(&nlmsghdr, 0, sizeof(nlmsghdr));
 	nlmsghdr.nlmsg_len = NLMSG_LENGTH(sizeof(cn_msg) + sizeof(op));
 	nlmsghdr.nlmsg_pid = getpid();
 	nlmsghdr.nlmsg_type = NLMSG_DONE;
 	iov[0].iov_base = &nlmsghdr;
 	iov[0].iov_len = sizeof(nlmsghdr);
 
-	memset(&cn_msg, 0, sizeof(cn_msg));
+	(void)memset(&cn_msg, 0, sizeof(cn_msg));
 	cn_msg.id.idx = CN_IDX_PROC;
         cn_msg.id.val = CN_VAL_PROC;
         cn_msg.len = sizeof(enum proc_cn_mcast_op);
@@ -764,7 +764,7 @@ static void stats_cpu_freq_read(stats_t *const stats)
 			char path[PATH_MAX];
 			uint64_t freq;
 
-			snprintf(path, sizeof(path),
+			(void)snprintf(path, sizeof(path),
 				"/sys/devices/system/cpu/%s/cpufreq/scaling_cur_freq",
 				name);
 			if (file_get_uint64(path, &freq) == 0) {
@@ -805,7 +805,7 @@ static int stats_read(stats_t *const stats)
 	}
 
 	if ((fp = fopen("/proc/stat", "r")) == NULL) {
-		fprintf(stderr, "Cannot read /proc/stat, errno=%d (%s).\n",
+		(void)fprintf(stderr, "Cannot read /proc/stat, errno=%d (%s).\n",
 			errno, strerror(errno));
 		return -1;
 	}
@@ -945,30 +945,30 @@ static void stats_headings(void)
 	uint8_t i;
 
 	if (opts & OPTS_USE_NETLINK)
-		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts");
+		(void)printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts");
 	else
-		printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s  Watts");
+		(void)printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s  Watts");
 
 	if (opts & (OPTS_DOMAIN_STATS |
 		    OPTS_THERMAL_ZONE |
 		    OPTS_CPU_FREQ |
 		    OPTS_GPU))
-		putchar(' ');
+		(void)putchar(' ');
 		   
 	if (opts & OPTS_DOMAIN_STATS) {
 		for (i = 0; i < power_domains; i++)
-			printf(" %6.6s",
+			(void)printf(" %6.6s",
 				get_domain ? get_domain(i) : "unknown");
 	}
 	if (opts & OPTS_THERMAL_ZONE) {
 		for (i = 0; i < thermal_zones; i++)
-			printf(" %6.6s", tz_get_type(i));
+			(void)printf(" %6.6s", tz_get_type(i));
 	}
 	if (opts & OPTS_CPU_FREQ)
-		printf(" %9.9s", "CPU Freq");
+		(void)printf(" %9.9s", "CPU Freq");
 	if (opts & OPTS_GPU)
-		printf(" %6.6s", "GPU W");
-	printf("\n");
+		(void)printf(" %6.6s", "GPU W");
+	(void)printf("\n");
 }
 
 /*
@@ -980,23 +980,23 @@ static void stats_ruler(void)
 	uint8_t i;
 
 	if (opts & OPTS_USE_NETLINK)
-		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------ ");
+		(void)printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------ ");
 	else
-		printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ------ ");
+		(void)printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ------ ");
 
 	if (opts & OPTS_DOMAIN_STATS) {
 		for (i = 0; i < power_domains; i++)
-			printf(" ------");
+			(void)printf(" ------");
 	}
 	if (opts & OPTS_THERMAL_ZONE) {
 		for (i = 0; i < thermal_zones; i++)
-			printf(" ------");
+			(void)printf(" ------");
 	}
 	if (opts & OPTS_CPU_FREQ)
-		printf(" ---------");
+		(void)printf(" ---------");
 	if (opts & OPTS_GPU)
-		printf(" ------");
-	printf("\n");
+		(void)printf(" ------");
+	(void)printf("\n");
 }
 
 /*
@@ -1046,7 +1046,7 @@ static void stats_print(
 			"%4.1f %6.1f %6.1f %4.1f %4.1f %4.1f %s" :
 			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f "
 			"%4.0f %6.0f %6.0f %4.0f %4.0f %4.0f %s";
-		printf(fmt,
+		(void)printf(fmt,
 			prefix,
 			s->value[CPU_USER], s->value[CPU_NICE],
 			s->value[CPU_SYS], s->value[CPU_IDLE],
@@ -1060,7 +1060,7 @@ static void stats_print(
 			"%4.1f %6.1f %6.1f %s" :
 			"%8.8s %5.1f %5.1f %5.1f %5.1f %5.1f "
 			"%4.0f %6.0f %6.0f %s";
-		printf(fmt,
+		(void)printf(fmt,
 			prefix,
 			s->value[CPU_USER], s->value[CPU_NICE],
 			s->value[CPU_SYS], s->value[CPU_IDLE],
@@ -1070,21 +1070,21 @@ static void stats_print(
 	}
 	if (opts & OPTS_DOMAIN_STATS) {
 		for (i = 0; i < power_domains; i++)
-			printf(" %6.2f", s->value[POWER_DOMAIN_0 + i]);
+			(void)printf(" %6.2f", s->value[POWER_DOMAIN_0 + i]);
 	}
 	if (opts & OPTS_THERMAL_ZONE) {
 		for (i = 0; i < thermal_zones; i++)
-			printf(" %6.2f", s->value[THERMAL_ZONE_0 + i]);
+			(void)printf(" %6.2f", s->value[THERMAL_ZONE_0 + i]);
 	}
 	if (opts & OPTS_CPU_FREQ)
-		printf(" %s", cpu_freq_format(s->value[CPU_FREQ]));
+		(void)printf(" %s", cpu_freq_format(s->value[CPU_FREQ]));
 	if (opts & OPTS_GPU) {
 		if (s->inaccurate[POWER_GPU])
-			printf("  -N/A-");
+			(void)printf("  -N/A-");
 		else
-			printf(" %6.2f", s->value[POWER_GPU]);
+			(void)printf(" %6.2f", s->value[POWER_GPU]);
 	}
-	printf("\n");
+	(void)printf("\n");
 }
 
 /*
@@ -1162,7 +1162,7 @@ static void stats_histogram(
 	unsigned int bucket[MAX_DIVISIONS], max_bucket = 0;
 	char buf[32];
 
-	memset(bucket, 0, sizeof(bucket));
+	(void)memset(bucket, 0, sizeof(bucket));
 
 	for (valid = 0, i = 0; i < num; i++) {
 		if (!stats[i].inaccurate[value]) {
@@ -1179,7 +1179,7 @@ static void stats_histogram(
 		return;
 
 	if (FLOAT_CMP(max - min, 0.0)) {
-		printf("\nRange is zero, cannot produce histogram of %s\n", short_title);
+		(void)printf("\nRange is zero, cannot produce histogram of %s\n", short_title);
 		return;
 	}
 	division = ((max * 1.000001) - min) / (MAX_DIVISIONS);
@@ -1193,27 +1193,27 @@ static void stats_histogram(
 		}
 	}
 
-	putchar('\n');
-	printf(title, num);
-	snprintf(buf, sizeof(buf), "%.0f", max);
+	(void)putchar('\n');
+	(void)printf(title, num);
+	(void)snprintf(buf, sizeof(buf), "%.0f", max);
 	digits = strlen(buf) + 4;
 	digits = (digits < 5) ? 5 : digits;
 	width = 3 + (digits * 2);
-	snprintf(buf, sizeof(buf), "%*s%s",
+	(void)snprintf(buf, sizeof(buf), "%*s%s",
 		(width - 13) / 2, "", label);
-	printf("%-*s Count\n", width, buf);
-	snprintf(buf, sizeof(buf), "%%%d.3f - %%%d.3f %%5u ",
+	(void)printf("%-*s Count\n", width, buf);
+	(void)snprintf(buf, sizeof(buf), "%%%d.3f - %%%d.3f %%5u ",
 		digits, digits);
 
 	prev = min;
 	for (i = 0; i < MAX_DIVISIONS; i++) {
 		unsigned int j;
 
-		printf(buf, prev, prev + division - 0.001, bucket[i]);
+		(void)printf(buf, prev, prev + division - 0.001, bucket[i]);
 
 		for (j = 0; j < HISTOGRAM_WIDTH * bucket[i] / max_bucket; j++)
-			putchar('#');
-		putchar('\n');
+			(void)putchar('#');
+		(void)putchar('\n');
 		prev += division;
 	}
 }
@@ -1362,7 +1362,7 @@ static int power_get_sys_fs(
 	*discharging = false;
 
 	if ((dir = opendir(SYS_CLASS_POWER_SUPPLY)) == NULL) {
-		fprintf(stderr, "Device does not have %s, "
+		(void)fprintf(stderr, "Device does not have %s, "
 			"cannot run the test.\n",
 			SYS_CLASS_POWER_SUPPLY);
 		return -1;
@@ -1390,7 +1390,7 @@ static int power_get_sys_fs(
 			(void)snprintf(path, sizeof(path), "%s/%s/uevent",
 				SYS_CLASS_POWER_SUPPLY, dirent->d_name);
 			if ((fp = fopen(path, "r")) == NULL) {
-				fprintf(stderr, "Battery %s present but under "
+				(void)fprintf(stderr, "Battery %s present but under "
 					"supported - no state present.",
 					dirent->d_name);
 				(void)closedir(dir);
@@ -1451,7 +1451,7 @@ static int power_get_sys_fs(
 			*discharging = true;	/* Lie */
 			return 0;
 		}
-		printf("Device is not discharging, cannot measure power usage.\n");
+		(void)printf("Device is not discharging, cannot measure power usage.\n");
 		return -1;
 	}
 
@@ -1490,7 +1490,7 @@ static int power_get_proc_acpi(
 	*discharging = false;
 
 	if ((dir = opendir(PROC_ACPI_BATTERY)) == NULL) {
-		fprintf(stderr, "Device does not have %s, "
+		(void)fprintf(stderr, "Device does not have %s, "
 			"cannot run the test.\n",
 			PROC_ACPI_BATTERY);
 		return -1;
@@ -1511,11 +1511,11 @@ static int power_get_proc_acpi(
 		if (strlen(dirent->d_name) < 3)
 			continue;
 
-		sprintf(filename, "/proc/acpi/battery/%s/state", dirent->d_name);
+		(void)sprintf(filename, "/proc/acpi/battery/%s/state", dirent->d_name);
 		if ((file = fopen(filename, "r")) == NULL)
 			continue;
 
-		memset(buffer, 0, sizeof(buffer));
+		(void)memset(buffer, 0, sizeof(buffer));
 		while (fgets(buffer, sizeof(buffer), file) != NULL) {
 			if (strstr(buffer, "present:") &&
 			    strstr(buffer, "no"))
@@ -1554,7 +1554,7 @@ static int power_get_proc_acpi(
 		 * the design_voltage field, so work around this.
 		 */
 		if (FLOAT_CMP(voltage, 0.0)) {
-			sprintf(filename, "/proc/acpi/battery/%s/info", dirent->d_name);
+			(void)sprintf(filename, "/proc/acpi/battery/%s/info", dirent->d_name);
 			if ((file = fopen(filename, "r")) != NULL) {
 				while (fgets(buffer, sizeof(buffer), file) != NULL) {
 					ptr = strchr(buffer, ':');
@@ -1580,7 +1580,7 @@ static int power_get_proc_acpi(
 			*discharging = true;	/* Lie */
 			return 0;
 		}
-		printf("Device is indicating it is not discharging and hence "
+		(void)printf("Device is indicating it is not discharging and hence "
 		       "we cannot measure power usage.\n");
 		return -1;
 	}
@@ -1639,7 +1639,7 @@ static const char *rapl_get_domain(const int n)
 		if (rapl->is_package) {
 			static char buf[128];
 
-			snprintf(buf, sizeof(buf), "pkg-%s", rapl->domain_name + 8);
+			(void)snprintf(buf, sizeof(buf), "pkg-%s", rapl->domain_name + 8);
 			return buf;
 		}
 		return rapl->domain_name;
@@ -1658,7 +1658,7 @@ static int rapl_get_domains(void)
 
 	dir = opendir("/sys/class/powercap");
 	if (dir == NULL) {
-		printf("Device does not have RAPL, cannot measure power usage.\n");
+		(void)printf("Device does not have RAPL, cannot measure power usage.\n");
 		return -1;
 	}
 
@@ -1672,17 +1672,17 @@ static int rapl_get_domains(void)
 			continue;
 
 		if ((rapl = calloc(1, sizeof(*rapl))) == NULL) {
-			fprintf(stderr, "Cannot allocate RAPL information.\n");
-			closedir(dir);
+			(void)fprintf(stderr, "Cannot allocate RAPL information.\n");
+			(void)closedir(dir);
 			return -1;
 		}
 		if ((rapl->name = strdup(entry->d_name)) == NULL) {
-			fprintf(stderr, "Cannot allocate RAPL name information.\n");
-			closedir(dir);
+			(void)fprintf(stderr, "Cannot allocate RAPL name information.\n");
+			(void)closedir(dir);
 			free(rapl);
 			return -1;
 		}
-		snprintf(path, sizeof(path),
+		(void)snprintf(path, sizeof(path),
 			"/sys/class/powercap/%s/max_energy_range_uj",
 			entry->d_name);
 
@@ -1692,7 +1692,7 @@ static int rapl_get_domains(void)
 				rapl->max_energy_uj = 0.0;
 			(void)fclose(fp);
 		}
-		snprintf(path, sizeof(path),
+		(void)snprintf(path, sizeof(path),
 			"/sys/class/powercap/%s/name",
 			entry->d_name);
 
@@ -1721,7 +1721,7 @@ static int rapl_get_domains(void)
 	power_domains = MIN(n, MAX_POWER_DOMAINS);
 
 	if (!n)
-		printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
+		(void)printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
 	return n;
 }
 
@@ -1740,18 +1740,18 @@ static char *power_get_rapl_domain_names(void)
 		char *tmp;
 		size_t new_len;
 
-		snprintf(new_name, sizeof(new_name), "%s%s",
+		(void)snprintf(new_name, sizeof(new_name), "%s%s",
 				len == 0 ? "" : ", ", rapl->domain_name);
 		new_len = strlen(new_name);
 		tmp = realloc(names, new_len + len + 1);
 		if (!tmp) {
-			fprintf(stderr, "Out of memory allocating RAPL domain names.\n");
+			(void)fprintf(stderr, "Out of memory allocating RAPL domain names.\n");
 			free(names);
 			names = NULL;
 			break;
 		}
 		names = tmp;
-		strncpy(names + len, new_name, new_len + 1);
+		(void)strncpy(names + len, new_name, new_len + 1);
 		len += new_len;
 	}
 
@@ -1783,7 +1783,7 @@ static int power_get_rapl(
 		FILE *fp;
 		double ujoules;
 
-		snprintf(path, sizeof(path),
+		(void)snprintf(path, sizeof(path),
 			"/sys/class/powercap/%s/energy_uj",
 			rapl->name);
 
@@ -1817,7 +1817,7 @@ static int power_get_rapl(
 			n++;
 			*discharging = true;
 		}
-		fclose(fp);
+		(void)fclose(fp);
 	}
 
 	if (first) {
@@ -1830,7 +1830,7 @@ static int power_get_rapl(
 			*discharging = true;	/* Lie */
 			return 0;
 		}
-		printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
+		(void)printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
 		return -1;
 	}
 	return 0;
@@ -1938,7 +1938,7 @@ static int tz_get_zones(void)
 
 	dir = opendir("/sys/class/thermal");
 	if (dir == NULL) {
-		printf("Device does not have thermal zones.\n");
+		(void)printf("Device does not have thermal zones.\n");
 		return -1;
 	}
 
@@ -1952,17 +1952,17 @@ static int tz_get_zones(void)
 			continue;
 
 		if ((tz = calloc(1, sizeof(*tz))) == NULL) {
-			fprintf(stderr, "Cannot allocate thermal information.\n");
-			closedir(dir);
+			(void)fprintf(stderr, "Cannot allocate thermal information.\n");
+			(void)closedir(dir);
 			return -1;
 		}
 		if ((tz->name = strdup(entry->d_name)) == NULL) {
-			fprintf(stderr, "Cannot allocate thermal zone name information.\n");
-			closedir(dir);
+			(void)fprintf(stderr, "Cannot allocate thermal zone name information.\n");
+			(void)closedir(dir);
 			free(tz);
 			return -1;
 		}
-		snprintf(path, sizeof(path),
+		(void)snprintf(path, sizeof(path),
 			"/sys/class/thermal/%s/type",
 			entry->d_name);
 
@@ -2005,7 +2005,7 @@ static int tz_get_temperature(stats_t *const stats)
 		char path[PATH_MAX];
 		uint64_t temp;
 
-		snprintf(path, sizeof(path),
+		(void)snprintf(path, sizeof(path),
 			"/sys/class/thermal/%s/temp",
 			tz->name);
 		if (file_get_uint64(path, &temp) == 0) {
@@ -2049,7 +2049,7 @@ static int power_get(
 	    S_ISDIR(buf.st_mode))
 		return power_get_proc_acpi(stats, discharging);
 
-	fprintf(stderr, "Device does not seem to have a battery, cannot measure power.\n");
+	(void)fprintf(stderr, "Device does not seem to have a battery, cannot measure power.\n");
 	return -1;
 }
 
@@ -2101,7 +2101,7 @@ static cpu_state_t *cpu_state_get(const char *name)
 		free(s);
 		return NULL;
 	}
-	strncpy(s->name_short, name, len + 1);
+	(void)strncpy(s->name_short, name, len + 1);
 	s->name_short[len] = '\0';
 	s->hash_next = cpu_states[h];
 	cpu_states[h] = s;
@@ -2138,16 +2138,16 @@ static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
 		return NULL;
 	}
 
-	snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/name",
+	(void)snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/name",
 		cpu_path, cpu_id, state);
 
-	memset(buffer, 0, sizeof(buffer));
+	(void)memset(buffer, 0, sizeof(buffer));
 	if ((fp = fopen(path, "r")) != NULL) {
 		if (fscanf(fp, "%63s", buffer) != 1)
-			strncpy(buffer, "unknown", sizeof(buffer) - 1);
-		fclose(fp);
+			(void)strncpy(buffer, "unknown", sizeof(buffer) - 1);
+		(void)fclose(fp);
 	} else {
-		strncpy(buffer, state, sizeof(buffer) - 1);
+		(void)strncpy(buffer, state, sizeof(buffer) - 1);
 	}
 	if ((ci->cpu_state = cpu_state_get(buffer)) == NULL) {
 		free(ci->state);
@@ -2156,12 +2156,12 @@ static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
 	}
 	if (!ci->cpu_state->latency) {
 		uint64_t val;
-		snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/latency",
+		(void)snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/latency",
 			cpu_path, cpu_id, state);
 		if ((fp = fopen(path, "r")) != NULL) {
 			if (fscanf(fp, "%" SCNu64, &val) == 1)
 				ci->cpu_state->latency = val;
-			fclose(fp);
+			(void)fclose(fp);
 		}
 	}
 
@@ -2186,25 +2186,25 @@ static int cpu_info_update(cpu_info_t *ci)
 	FILE *fp;
 	uint64_t val;
 
-	snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/time",
+	(void)snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/time",
 		cpu_path, ci->cpu_id, ci->state);
 	ci->prev_time = ci->time;
 	ci->time = 0;
 	if ((fp = fopen(path, "r")) != NULL) {
 		if (fscanf(fp, "%" SCNu64, &val) == 1)
 			ci->time = val;
-		fclose(fp);
+		(void)fclose(fp);
 	}
 	ci->time_diff = ci->time - ci->prev_time;
 
-	snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/usage",
+	(void)snprintf(path, sizeof(path), "%s/cpu%" PRIu32 "/cpuidle/%s/usage",
 		cpu_path, ci->cpu_id, ci->state);
 	ci->prev_usage = ci->usage;
 	ci->usage = 0;
 	if ((fp = fopen(path, "r")) != NULL) {
 		if (fscanf(fp, "%" SCNu64, &val) == 1)
 			ci->usage = val;
-		fclose(fp);
+		(void)fclose(fp);
 	}
 	ci->usage_diff = ci->usage - ci->prev_usage;
 
@@ -2240,7 +2240,7 @@ static void cpu_states_update(void)
 			if (max_cpu_id < cpu_id)
 				max_cpu_id = cpu_id;
 
-			snprintf(path, sizeof(path), "%s/%s/cpuidle", cpu_path, name);
+			(void)snprintf(path, sizeof(path), "%s/%s/cpuidle", cpu_path, name);
 
 			n_states = scandir(path, &states_list, NULL, alphasort);
 			for (j = 0; j < n_states; j++) {
@@ -2323,15 +2323,15 @@ static void cpu_states_dump(void)
 	}
 
 	if (c0_percent >= 0.0) {
-		printf("\n%-10s %7s %10s %-8s\n",
+		(void)printf("\n%-10s %7s %10s %-8s\n",
 			"C-State", "Resident", "Count", "Latency");
 		for (s = cpu_states_list; s; s = s->list_next)
-			printf("%-10s %7.3f%% %10" PRIu64 "%8" PRIu64 "\n",
+			(void)printf("%-10s %7.3f%% %10" PRIu64 "%8" PRIu64 "\n",
 				s->name, s->resident, s->usage_total, s->latency);
 		if (!c0)
-			printf("%-10s %7.3f%%\n", "C0", c0_percent);
+			(void)printf("%-10s %7.3f%%\n", "C0", c0_percent);
 	} else {
-		printf("\nUntrustworthy C-State states, ignoring.\n");
+		(void)printf("\nUntrustworthy C-State states, ignoring.\n");
 	}
 }
 
@@ -2380,7 +2380,7 @@ static int proc_cmdline(
 	}
 
 	if (n < 1) {
-		strncpy(cmdline, "<unknown>", size);
+		(void)strncpy(cmdline, "<unknown>", size);
 		n = 9;
 	}
 
@@ -2460,10 +2460,10 @@ static int proc_info_add(const pid_t pid)
 	if (!free_slot)
 		return -1;
 
-	memset(cmdline, 0, sizeof(cmdline));	/* keep valgrind happy */
+	(void)memset(cmdline, 0, sizeof(cmdline));	/* keep valgrind happy */
 
 	if ((info = calloc(1, sizeof(*info))) == NULL) {
-		fprintf(stderr, "Cannot allocate all proc info.\n");
+		(void)fprintf(stderr, "Cannot allocate all proc info.\n");
 		return -1;
 	}
 	info->pid = pid;
@@ -2472,11 +2472,11 @@ static int proc_info_add(const pid_t pid)
 	(void)proc_cmdline(pid, cmdline, sizeof(cmdline));
 
 	if ((info->cmdline = malloc(strlen(cmdline)+1)) == NULL) {
-		fprintf(stderr, "Cannot allocate all proc info.\n");
+		(void)fprintf(stderr, "Cannot allocate all proc info.\n");
 		free(info);
 		return -1;
 	}
-	strcpy(info->cmdline, cmdline);
+	(void)strcpy(info->cmdline, cmdline);
 	proc_info[i] = info;
 
 	return -1;
@@ -2522,7 +2522,7 @@ static int monitor(const int sock)
 	double time_start;
 
 	if ((stats = calloc((size_t)max_readings, sizeof(*stats))) == NULL) {
-		fprintf(stderr, "Cannot allocate statistics table.\n");
+		(void)fprintf(stderr, "Cannot allocate statistics table.\n");
 		return -1;
 	}
 
@@ -2577,7 +2577,7 @@ static int monitor(const int sock)
 			if (ret < 0) {
 				if (errno == EINTR)
 					break;
-				fprintf(stderr,"select failed: errno=%d (%s).\n",
+				(void)fprintf(stderr,"select failed: errno=%d (%s).\n",
 					errno, strerror(errno));
 				free(stats);
 				return -1;
@@ -2600,7 +2600,7 @@ static int monitor(const int sock)
 					(redone & OPTS_REDO_NETLINK_BUSY) ? "fork/exec/exit activity" : "");
 				indent = (80 - strlen(buffer)) / 2;
 				row_increment(&row);
-				printf("%*.*s%s\n", indent, indent, "", buffer);
+				(void)printf("%*.*s%s\n", indent, indent, "", buffer);
 				redone = 0;
 			}
 
@@ -2671,7 +2671,7 @@ static int monitor(const int sock)
 				if (errno == EINTR) {
 					continue;
 				} else {
-					fprintf(stderr,"recv failed: errno=%d (%s).\n",
+					(void)fprintf(stderr,"recv failed: errno=%d (%s).\n",
 						errno, strerror(errno));
 					free(stats);
             				return -1;
@@ -2771,19 +2771,19 @@ static int monitor(const int sock)
 		stats_ruler();
 	}
 
-	printf("Summary:\n");
+	(void)printf("Summary:\n");
 #if defined(POWERSTAT_X86)
 	if (opts & OPTS_RAPL) {
-		printf("CPU: %6.2f Watts on average with standard deviation %-6.2f\n",
+		(void)printf("CPU: %6.2f Watts on average with standard deviation %-6.2f\n",
 			average.value[POWER_TOTAL], stddev.value[POWER_TOTAL]);
 	} else
 #endif
 	{
-		printf("System: %6.2f Watts on average with standard deviation %-6.2f\n",
+		(void)printf("System: %6.2f Watts on average with standard deviation %-6.2f\n",
 			average.value[POWER_TOTAL], stddev.value[POWER_TOTAL]);
 	}
 	if (opts & OPTS_GPU) {
-		printf("GPU: %6.2f Watts on average with standard deviation %-6.2f\n",
+		(void)printf("GPU: %6.2f Watts on average with standard deviation %-6.2f\n",
 			average.value[POWER_GPU], stddev.value[POWER_GPU]);
 	}
 
@@ -2791,23 +2791,23 @@ static int monitor(const int sock)
 	if (opts & OPTS_RAPL) {
 		char *names = power_get_rapl_domain_names();
 
-		printf("Note: power read from RAPL domains: %s.\n",
+		(void)printf("Note: power read from RAPL domains: %s.\n",
 			names ? names : "unknown");
-		printf("These readings do not cover all the hardware in this device.\n");
+		(void)printf("These readings do not cover all the hardware in this device.\n");
 		free(names);
 	} else
 #endif
 	{
 		if (power_calc_from_capacity) {
-			printf("Note: Power calculated from battery capacity drain, may not be accurate.\n");
+			(void)printf("Note: Power calculated from battery capacity drain, may not be accurate.\n");
 		} else {
 			if (opts & OPTS_STANDARD_AVERAGE)
-				printf("Note: The battery supplied suitable power data, -S option not required.\n");
+				(void)printf("Note: The battery supplied suitable power data, -S option not required.\n");
 		}
 	}
 	/* Just in case user wondered why no thermal zone info was displayed */
 	if ((opts & OPTS_THERMAL_ZONE) && (!thermal_zones))
-		printf("Note: No thermal zones on this device.\n");
+		(void)printf("Note: No thermal zones on this device.\n");
 
 	if (opts & OPTS_CSTATES)
 		cpu_states_dump();
@@ -2833,8 +2833,8 @@ static int monitor(const int sock)
 				char buf1[80], buf2[80];
 				const char *type = tz_get_type(tz);
 
-				snprintf(buf1, sizeof(buf1), "thermal zone %s", type);
-				snprintf(buf2, sizeof(buf2), "Histogram (of %%d thermal zone %s readings)\n\n", type);
+				(void)snprintf(buf1, sizeof(buf1), "thermal zone %s", type);
+				(void)snprintf(buf2, sizeof(buf2), "Histogram (of %%d thermal zone %s readings)\n\n", type);
 				stats_histogram(stats, readings, THERMAL_ZONE_0 + tz,
 					buf1, buf2, "Range (°C)", 1.0);
 			}
@@ -2851,30 +2851,30 @@ static int monitor(const int sock)
  */
 static void show_help(char *const argv[])
 {
-	printf("%s, version %s\n\n", app_name, VERSION);
-	printf("usage: %s [options] [delay [count]]\n", argv[0]);
-	printf("\t-a enable all sampling collection options (-c, -f, -t and -H)\n");
-	printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
-	printf("\t-c show C-State statistics at end of the run\n");
-	printf("\t-d specify delay before starting, default is %" PRId32 " seconds\n", start_delay);
-	printf("\t-D show RAPL domain power measurements (enables -R option)\n");
-	printf("\t-f show average CPU frequency\n");
-	printf("\t-g show GPU power (currently just i915)\n");
-	printf("\t-h show help\n");
-	printf("\t-H show spread of measurements with power histogram\n");
-	printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
-	printf("\t-n no printing of table heading when screen scrolls\n");
-	printf("\t-p redo a sample if we see process fork/exec/exit activity\n");
-	printf("\t-r redo a sample if busy and we see process activity (same as -b -p)\n");
+	(void)printf("%s, version %s\n\n", app_name, VERSION);
+	(void)printf("usage: %s [options] [delay [count]]\n", argv[0]);
+	(void)printf("\t-a enable all sampling collection options (-c, -f, -t and -H)\n");
+	(void)printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
+	(void)printf("\t-c show C-State statistics at end of the run\n");
+	(void)printf("\t-d specify delay before starting, default is %" PRId32 " seconds\n", start_delay);
+	(void)printf("\t-D show RAPL domain power measurements (enables -R option)\n");
+	(void)printf("\t-f show average CPU frequency\n");
+	(void)printf("\t-g show GPU power (currently just i915)\n");
+	(void)printf("\t-h show help\n");
+	(void)printf("\t-H show spread of measurements with power histogram\n");
+	(void)printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
+	(void)printf("\t-n no printing of table heading when screen scrolls\n");
+	(void)printf("\t-p redo a sample if we see process fork/exec/exit activity\n");
+	(void)printf("\t-r redo a sample if busy and we see process activity (same as -b -p)\n");
 #if defined(POWERSTAT_X86)
-	printf("\t-R gather stats from Intel RAPL interface\n");
+	(void)printf("\t-R gather stats from Intel RAPL interface\n");
 #endif
-	printf("\t-s show process fork/exec/exit activity log\n");
-	printf("\t-S calculate power from capacity drain using standard average\n");
-	printf("\t-t show Thermal Zone temperatures (in degrees C)\n");
-	printf("\t-z forcibly ignore zero power rate stats from the battery\n");
-	printf("\tdelay: delay between each sample, default is %.1f seconds\n", SAMPLE_DELAY);
-	printf("\tcount: number of samples to take\n");
+	(void)printf("\t-s show process fork/exec/exit activity log\n");
+	(void)printf("\t-S calculate power from capacity drain using standard average\n");
+	(void)printf("\t-t show Thermal Zone temperatures (in degrees C)\n");
+	(void)printf("\t-z forcibly ignore zero power rate stats from the battery\n");
+	(void)printf("\tdelay: delay between each sample, default is %.1f seconds\n", SAMPLE_DELAY);
+	(void)printf("\tcount: number of samples to take\n");
 }
 
 int main(int argc, char * const argv[])
@@ -2913,11 +2913,11 @@ int main(int argc, char * const argv[])
 			errno = 0;
 			start_delay = strtol(optarg, NULL, 10);
 			if (errno) {
-				fprintf(stderr, "Invalid value for start delay.\n");
+				(void)fprintf(stderr, "Invalid value for start delay.\n");
 				exit(EXIT_FAILURE);
 			}
 			if (start_delay < 0) {
-				fprintf(stderr, "Start delay must be 0 or more seconds.\n");
+				(void)fprintf(stderr, "Start delay must be 0 or more seconds.\n");
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -2943,7 +2943,7 @@ int main(int argc, char * const argv[])
 			opts |= OPTS_REDO_WHEN_NOT_IDLE;
 			idle_threshold = atof(optarg);
 			if ((idle_threshold < 0.0) || (idle_threshold > 99.99)) {
-				fprintf(stderr, "Idle threshold must be between 0..99.99.\n");
+				(void)fprintf(stderr, "Idle threshold must be between 0..99.99.\n");
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -2974,7 +2974,7 @@ int main(int argc, char * const argv[])
 			opts |= OPTS_ZERO_RATE_ALLOW;
 			break;
 		case '?':
-			printf("Try '%s -h' for more information.\n", app_name);
+			(void)printf("Try '%s -h' for more information.\n", app_name);
 			exit(EXIT_FAILURE);
 		default:
 			show_help(argv);
@@ -2987,11 +2987,11 @@ int main(int argc, char * const argv[])
 		errno = 0;
 		sample_delay = atof(argv[optind++]);
 		if (errno) {
-			fprintf(stderr, "Invalid value for start delay.\n");
+			(void)fprintf(stderr, "Invalid value for start delay.\n");
 			exit(EXIT_FAILURE);
 		}
 		if (sample_delay < MIN_SAMPLE_DELAY) {
-			fprintf(stderr, "Sample delay must be greater or equal "
+			(void)fprintf(stderr, "Sample delay must be greater or equal "
 				"to %.1f seconds.\n", MIN_SAMPLE_DELAY);
 			exit(EXIT_FAILURE);
 		}
@@ -3020,11 +3020,11 @@ int main(int argc, char * const argv[])
 		errno = 0;
 		max_readings = strtol(argv[optind++], NULL, 10);
 		if (errno) {
-			fprintf(stderr, "Invalid value for maximum readings.\n");
+			(void)fprintf(stderr, "Invalid value for maximum readings.\n");
 			exit(EXIT_FAILURE);
 		}
 		if ((max_readings * sample_delay) < run_duration) {
-			fprintf(stderr, "Number of readings should be at least %ld.\n",
+			(void)fprintf(stderr, "Number of readings should be at least %ld.\n",
 				(long int)(run_duration / sample_delay));
 			exit(EXIT_FAILURE);
 		}
@@ -3033,31 +3033,31 @@ int main(int argc, char * const argv[])
 	}
 
 	if (max_readings < 5) {
-		fprintf(stderr, "Number of readings too low.\n");
+		(void)fprintf(stderr, "Number of readings too low.\n");
 		exit(EXIT_FAILURE);
 	}
 	if (max_readings < 10)
-		fprintf(stderr, "Number of readings low, results may be inaccurate.\n");
+		(void)fprintf(stderr, "Number of readings low, results may be inaccurate.\n");
 
 	if (!(opts & OPTS_ROOT_PRIV) &&
 	    (opts & (OPTS_USE_NETLINK | OPTS_GPU))) {
-		fprintf(stderr, "%s needs to be run with root privilege when using -g, -p, -r, -s options.\n", argv[0]);
+		(void)fprintf(stderr, "%s needs to be run with root privilege when using -g, -p, -r, -s options.\n", argv[0]);
 		exit(ret);
 	}
 
 	if (power_get(&dummy_stats, &discharging) < 0)
 		exit(ret);
-	printf("Running for %.1f seconds (%" PRIu32 " samples at %.1f second intervals).\n",
+	(void)printf("Running for %.1f seconds (%" PRIu32 " samples at %.1f second intervals).\n",
 			sample_delay * max_readings, max_readings, sample_delay);
-	printf("Power measurements will start in %" PRId32 " seconds time.\n",
+	(void)printf("Power measurements will start in %" PRId32 " seconds time.\n",
 		start_delay);
-	printf("\n");
+	(void)printf("\n");
 
 	if (start_delay > 0) {
 		/* Gather up initial data */
 		for (i = 0; i < start_delay; i++) {
-			printf("Waiting %" PRId32 " seconds before starting (gathering samples). \r", start_delay - i);
-			fflush(stdout);
+			(void)printf("Waiting %" PRId32 " seconds before starting (gathering samples). \r", start_delay - i);
+			(void)fflush(stdout);
 			if (power_get(&dummy_stats, &discharging) < 0)
 				exit(ret);
 			if (sleep(1) || stop_recv)
@@ -3065,17 +3065,17 @@ int main(int argc, char * const argv[])
 			if (!discharging)
 				exit(ret);
 		}
-		printf("%79.79s\r", "");
+		(void)printf("%79.79s\r", "");
 	}
 
-	memset(&new_action, 0, sizeof(new_action));
+	(void)memset(&new_action, 0, sizeof(new_action));
 	for (i = 0; i < (int)SIZEOF_ARRAY(signals); i++) {
 		new_action.sa_handler = handle_sig;
 		sigemptyset(&new_action.sa_mask);
 		new_action.sa_flags = 0;
 
 		if (sigaction(signals[i], &new_action, NULL) < 0) {
-			fprintf(stderr, "sigaction failed: errno=%d (%s).\n",
+			(void)fprintf(stderr, "sigaction failed: errno=%d (%s).\n",
 				errno, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
@@ -3087,7 +3087,7 @@ int main(int argc, char * const argv[])
     		sock = netlink_connect();
 		if (sock == -EPROTONOSUPPORT) {
 			if (opts & OPTS_SHOW_PROC_ACTIVITY)
-				printf("Cannot show process activity with this kernel.\n");
+				(void)printf("Cannot show process activity with this kernel.\n");
 			opts &= ~OPTS_USE_NETLINK;
 		} else if (sock < 0) {
 			goto abort;
