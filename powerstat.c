@@ -410,11 +410,12 @@ static const char *cpu_freq_format(const double freq)
 {
 	static char buffer[40];
 	char *suffix = "EHz";
+	const double f = freq * 1000000.0; /* MHz to Hz */
 	double scale = 1e18;
 	size_t i;
 
 	for (i = 0; cpu_freq_scale[i].suffix; i++) {
-		if (freq < cpu_freq_scale[i].threshold) {
+		if (f < cpu_freq_scale[i].threshold) {
 			suffix = cpu_freq_scale[i].suffix;
 			scale = cpu_freq_scale[i].scale;
 			break;
@@ -422,7 +423,7 @@ static const char *cpu_freq_format(const double freq)
 	}
 
 	(void)snprintf(buffer, sizeof(buffer), "%5.2f %-3s",
-		freq / scale, suffix);
+		f / scale, suffix);
 
 	return buffer;
 }
@@ -768,7 +769,7 @@ static void stats_cpu_freq_read(stats_t *const stats)
 				"/sys/devices/system/cpu/%s/cpufreq/scaling_cur_freq",
 				name);
 			if (file_get_uint64(path, &freq) == 0) {
-				total_freq += (double)freq * 1000.0;
+				total_freq += (double)freq / 1000.0;	/* In MHz */
 				n++;
 			}
 		}
@@ -1097,7 +1098,8 @@ static void stats_average_stddev_min_max(
 	stats_t *const average,
 	stats_t *const stddev,
 	stats_t *const min,
-	stats_t *const max)
+	stats_t *const max,
+	stats_t *const geometric_mean)
 {
 	int i, j, valid;
 
@@ -1106,6 +1108,7 @@ static void stats_average_stddev_min_max(
 
 		max->value[j] = -DBL_MAX;
 		min->value[j] = DBL_MAX;
+		geometric_mean->value[j] = 1.0;
 
 		for (valid = 0, i = 0; i < num; i++) {
 			if (!stats[i].inaccurate[j]) {
@@ -1114,6 +1117,7 @@ static void stats_average_stddev_min_max(
 				if (stats[i].value[j] < min->value[j])
 					min->value[j] = stats[i].value[j];
 				total += stats[i].value[j];
+				geometric_mean->value[j] *= stats[i].value[j];
 				valid++;
 			}
 		}
@@ -1130,6 +1134,9 @@ static void stats_average_stddev_min_max(
 			}
 			stddev->value[j] = total / (double)num;
 			stddev->value[j] = sqrt(stddev->value[j]);
+
+			geometric_mean->value[j] = (num == 0) ? 0.0 :
+				pow(geometric_mean->value[j], 1.0 / (double)num);
 		} else {
 			average->inaccurate[j] = true;
 			max->inaccurate[j] = true;
@@ -1140,6 +1147,7 @@ static void stats_average_stddev_min_max(
 			max->value[j] = 0.0;
 			min->value[j] = 0.0;
 			stddev->value[j] = 0.0;
+			geometric_mean->value[j] = 0.0;
 		}
 	}
 }
@@ -2517,7 +2525,7 @@ static int monitor(const int sock)
 	int64_t t = 1;
 	int redone = 0, row = 0;
 	uint32_t readings = 0;
-	stats_t *stats, s1, s2, average, stddev, min, max;
+	stats_t *stats, s1, s2, average, stddev, min, max, geometric_mean;
 	struct nlmsghdr *nlmsghdr;
 	double time_start;
 
@@ -2531,6 +2539,7 @@ static int monitor(const int sock)
 	stats_clear(&stddev);
 	stats_clear(&min);
 	stats_clear(&max);
+	stats_clear(&geometric_mean);
 
 	stats_headings();
 	row++;
@@ -2760,10 +2769,11 @@ static int monitor(const int sock)
 	 * min and max and display
 	 */
 	stats_average_stddev_min_max(stats, readings, &average,
-		&stddev, &min, &max);
+		&stddev, &min, &max, &geometric_mean);
 	if (readings > 0) {
 		stats_ruler();
 		stats_print("Average", true, &average);
+		stats_print("GeoMean", true, &geometric_mean);
 		stats_print("StdDev",  true, &stddev);
 		stats_ruler();
 		stats_print("Minimum", true, &min);

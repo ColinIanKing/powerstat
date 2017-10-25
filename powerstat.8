@@ -2,7 +2,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH POWERSTAT 8 "16 August, 2015"
+.TH POWERSTAT 8 "25 October 2017"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -30,7 +30,8 @@ powerstat measures the power consumption of a computer
 that has a battery power source or supports the RAPL (Running Average Power
 Limit) interface.  The output is like vmstat but also shows power
 consumption statistics.  At the end of a run, powerstat will calculate
-the average, standard deviation and min/max of the gathered data.
+the average, standard deviation, minimum, maximum and geometic mean of
+the gathered data.
 .br
 
 Note that running powerstat as root will provide extra information about
