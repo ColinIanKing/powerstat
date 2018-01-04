@@ -566,6 +566,8 @@ static inline void log_init(void)
 	infolog.tail = NULL;
 }
 
+static int log_printf(const char *const fmt, ...) __attribute__((format(printf, 1, 2)));
+
 /*
  *  log_printf()
  *	append log messages in log list
