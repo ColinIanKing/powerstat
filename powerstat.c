@@ -333,7 +333,7 @@ static const int signals[] = {
 
 /*
  *   set_prioity
- *	set high priority to try and get netlink activty
+ *	set high priority to try and get netlink activity
  *	before short lived processes die
  */
 static void set_priority(void)
