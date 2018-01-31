@@ -1,3 +1,14 @@
+powerstat (0.02.15-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * debian/control: remove trailing whitespace in text
+  * debian/control: update Standards-Version to 4.1.2
+  * Fix spelling mistake in comment
+  * Update copyright year
+  * Add GNU format attribute to log_printf
+
+ -- Colin King <colin.king@canonical.com>  Wed, 31 Jan 2018 11:15:11 +0000
+
 powerstat (0.02.14-1) unstable; urgency=medium
 
   * Makefile: bump version
@@ -443,7 +454,7 @@ powerstat (0.01.11-1) unstable; urgency=low
  -- Colin King <colin.king@canonical.com>  Tue, 12 Jun 2012 18:47:48 +0100
 
 powerstat (0.01.10-1) unstable; urgency=low
-    
+
   * Add dist rule to Makefile
   * Add debian/source format
   * debian: control: update Standards-Version to 3.9.3
@@ -453,19 +464,19 @@ powerstat (0.01.10-1) unstable; urgency=low
  -- Colin King <colin.king@canonical.com>  Tue, 12 Jun 2012 16:46:23 +0100
 
 powerstat (0.01.09) precise; urgency=low
-    
+
   * Fix typo
 
  -- Colin King <colin.king@canonical.com>  Wed, 22 Feb 2012 16:42:00 +0000
 
 powerstat (0.01.08) precise; urgency=low
-    
+
   * Handle broken HP battery info
 
  -- Colin King <colin.king@canonical.com>  Tue, 21 Feb 2012 16:25:00 +0000
 
 powerstat (0.01.07) precise; urgency=low
-    
+
   * Cater for critical discharging state too
 
  -- Colin King <colin.king@canonical.com>  Tue, 10 Jan 2012 17:29:00 +0000
@@ -518,6 +529,6 @@ powerstat (0.01.01) precise; urgency=low
 
 powerstat (0.01.00) precise; urgency=low
 
-  * Initial version 
+  * Initial version
 
  -- Colin King <colin.king@canonical.com>  Wed, 16 Nov 2011 12:15:00 +0000
