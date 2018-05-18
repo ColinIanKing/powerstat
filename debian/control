@@ -16,4 +16,3 @@ Description: laptop power measuring tool
  power consumption statistics.  At the end of a run, powerstat
  will calculate the average, standard deviation and min/max of
  the gathered data.
-
