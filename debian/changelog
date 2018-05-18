@@ -1,3 +1,13 @@
+powerstat (0.02.16-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * debian/copyright: use secure https url
+  * debian/control: remove empty last line
+  * update debian/compat to 11
+  * Fix range of CPU frequencies histogram. Scale by 1000 and not 1e9
+
+ -- Colin King <colin.king@canonical.com>  Fri, 18 May 2018 23:16:17 +0100
+
 powerstat (0.02.15-1) unstable; urgency=medium
 
   * Makefile: bump version
