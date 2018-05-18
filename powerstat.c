@@ -2837,7 +2837,7 @@ static int monitor(const int sock)
 			stats_histogram(stats, readings, CPU_FREQ,
 				"CPU average frequencies",
 				"Histogram (of %d CPU average frequencies)\n\n",
-				"Range (GHz)", 1e9);
+				"Range (GHz)", 1000.0);
 		if (opts & OPTS_THERMAL_ZONE) {
 			uint8_t	tz;
 
