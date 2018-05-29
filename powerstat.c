@@ -2728,7 +2728,7 @@ static int monitor(const int sock)
 					proc_info_add(proc_ev->event_data.fork.child_pid);
 					if (opts & OPTS_SHOW_PROC_ACTIVITY) {
 						char *type = is_thread ? "clone" : "fork";
-               					log_printf("fork: parent pid=%d -> %s pid=%d (%s)\n",
+               					(void)log_printf("fork: parent pid=%d -> %s pid=%d (%s)\n",
 							ppid,
 							type,
                        					proc_ev->event_data.fork.child_pid,
@@ -2739,7 +2739,7 @@ static int monitor(const int sock)
            			case PROC_EVENT_EXEC:
 					stats[readings].value[PROC_EXEC] += 1.0;
 					if (opts & OPTS_SHOW_PROC_ACTIVITY) {
-               					log_printf("exec: pid=%d (%s)\n",
+               					(void)log_printf("exec: pid=%d (%s)\n",
                        					proc_ev->event_data.exec.process_tgid,
 							proc_info_get(proc_ev->event_data.exec.process_pid));
 					}
@@ -2748,7 +2748,7 @@ static int monitor(const int sock)
            			case PROC_EVENT_EXIT:
 					stats[readings].value[PROC_EXIT] += 1.0;
 					if (opts & OPTS_SHOW_PROC_ACTIVITY) {
-               					log_printf("exit: pid=%d exit_code=%d (%s)\n",
+               					(void)log_printf("exit: pid=%d exit_code=%d (%s)\n",
                         				proc_ev->event_data.exit.process_pid,
                         				proc_ev->event_data.exit.exit_code,
 							proc_info_get(proc_ev->event_data.exit.process_pid));
