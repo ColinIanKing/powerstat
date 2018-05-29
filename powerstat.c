@@ -2309,6 +2309,7 @@ static void cpu_states_dump(void)
 	cpu_state_t *s;
 	double c0_percent = 100.0;
 	bool c0 = false;
+	int name_width = 10;
 
 	if (!cpu_states_list)
 		return;
@@ -2317,6 +2318,10 @@ static void cpu_states_dump(void)
 		cpu_info_t *ci;
 		uint64_t state_total = 0;
 		double time_total = 0;
+		const int len = strlen(s->name);
+
+		if (len > name_width)
+			name_width = len;
 
 		for (ci = s->cpu_info_list; ci; ci = ci->list_next) {
 			state_total += ci->time_diff;
@@ -2333,13 +2338,13 @@ static void cpu_states_dump(void)
 	}
 
 	if (c0_percent >= 0.0) {
-		(void)printf("\n%-10s %7s %10s %-8s\n",
-			"C-State", "Resident", "Count", "Latency");
+		(void)printf("\n%-*s %7s %10s %-8s\n",
+			name_width, "C-State", "Resident", "Count", "Latency");
 		for (s = cpu_states_list; s; s = s->list_next)
-			(void)printf("%-10s %7.3f%% %10" PRIu64 "%8" PRIu64 "\n",
-				s->name, s->resident, s->usage_total, s->latency);
+			(void)printf("%-*s %7.3f%% %10" PRIu64 "%8" PRIu64 "\n",
+				name_width, s->name, s->resident, s->usage_total, s->latency);
 		if (!c0)
-			(void)printf("%-10s %7.3f%%\n", "C0", c0_percent);
+			(void)printf("%-*s %7.3f%%\n", name_width, "C0", c0_percent);
 	} else {
 		(void)printf("\nUntrustworthy C-State states, ignoring.\n");
 	}
