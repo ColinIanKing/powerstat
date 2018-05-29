@@ -1,3 +1,16 @@
+powerstat (0.02.17-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * voidify returns from log_printf call
+  * Make indices arrays const
+  * Make cpu_freq_scale const
+  * Add hint on how to run if not in "discharge" mode
+  * Add adjustable C-state column width for C-state name column
+  * snapcraft: make confinement strict
+  * snapcraft: add plugs
+
+ -- Colin King <colin.king@canonical.com>  Tue, 29 May 2018 12:57:12 +0100
+
 powerstat (0.02.16-1) unstable; urgency=medium
 
   * Makefile: bump version
