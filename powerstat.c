@@ -1462,6 +1462,11 @@ static int power_get_sys_fs(
 			return 0;
 		}
 		(void)printf("Device is not discharging, cannot measure power usage.\n");
+		(void)printf("Perhaps re-run with -z (ignore zero power)"
+#if defined(POWERSTAT_X86)
+			     " or -R (RAPL)"
+#endif
+			     "\n");
 		return -1;
 	}
 
