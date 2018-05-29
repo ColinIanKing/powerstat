@@ -797,7 +797,7 @@ static int stats_read(stats_t *const stats)
 	char buf[4096];
 	int i, j;
 
-	static stat_type indices[] = {
+	static const stat_type indices[] = {
 		CPU_USER, CPU_NICE, CPU_SYS, CPU_IDLE,
 		CPU_IOWAIT, CPU_IRQ, CPU_SOFTIRQ, CPU_CTXT,
 		CPU_INTR, CPU_PROCS_RUN, CPU_PROCS_BLK, -1
@@ -895,7 +895,7 @@ static bool stats_gather(
 	int i, j;
 	bool inaccurate = false;
 
-	static int indices[] = {
+	static const int indices[] = {
 		CPU_USER, CPU_NICE, CPU_SYS, CPU_IDLE,
 		CPU_IOWAIT, -1
 	};
