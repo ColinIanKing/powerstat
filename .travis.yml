@@ -1,0 +1,15 @@
+dist: bionic
+sudo: required
+
+matrix:
+    include:
+        - env: PEDANTIC=1
+
+before_install:
+    - sudo apt-get update -q
+    - sudo apt-get install build-essential
+
+language: c
+
+script:
+- make -j2 PEDANTIC=$PEDANTIC
