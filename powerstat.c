@@ -1108,23 +1108,34 @@ static void stats_average_stddev_min_max(
 
 	for (j = 0; j < MAX_VALUES; j++) {
 		double total = 0.0;
+		double mant = 1.0;
+		int64_t expon = 0;
 
 		max->value[j] = -DBL_MAX;
 		min->value[j] = DBL_MAX;
-		geometric_mean->value[j] = 1.0;
 
 		for (valid = 0, i = 0; i < num; i++) {
 			if (!stats[i].inaccurate[j]) {
+				int e;
+				double f;
+
 				if (stats[i].value[j] > max->value[j])
 					max->value[j] = stats[i].value[j];
 				if (stats[i].value[j] < min->value[j])
 					min->value[j] = stats[i].value[j];
 				total += stats[i].value[j];
-				geometric_mean->value[j] *= stats[i].value[j];
+				
+				f = frexp(stats[i].value[j], &e);
+				mant *= f;
+				expon += e;
 				valid++;
 			}
 		}
 		if (valid) {
+			double inverse_n = 1.0 / (double)valid;
+
+			geometric_mean->value[j] = pow(mant, inverse_n) * 
+				pow(2.0, (double)expon / (double)valid);
 			average->value[j] = total / (double)valid;
 			total = 0.0;
 			for (i = 0; i < num; i++) {
@@ -1137,9 +1148,6 @@ static void stats_average_stddev_min_max(
 			}
 			stddev->value[j] = total / (double)num;
 			stddev->value[j] = sqrt(stddev->value[j]);
-
-			geometric_mean->value[j] = (num == 0) ? 0.0 :
-				pow(geometric_mean->value[j], 1.0 / (double)num);
 		} else {
 			average->inaccurate[j] = true;
 			max->inaccurate[j] = true;
