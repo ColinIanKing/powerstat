@@ -134,7 +134,6 @@ typedef struct cpu_state {
 typedef struct cpu_info {
 	struct cpu_info	*hash_next;	/* Next in hash table */
 	struct cpu_info *list_next;	/* Next in list of cpu_infos list */
-	uint32_t	cpu_id;		/* CPU ID */
 	char		*state;		/* C-State sysfs name, e.g 'state2' */
 	cpu_state_t 	*cpu_state;	/* C-State info */
 	double		prev_tod;	/* Previous Time-of-Day */
@@ -146,6 +145,7 @@ typedef struct cpu_info {
 	uint64_t	prev_usage;	/* Previous usage count */
 	uint64_t	usage;		/* Current usage count */
 	uint64_t	usage_diff;	/* Difference in usage count */
+	uint32_t	cpu_id;		/* CPU ID */
 } cpu_info_t;
 
 
