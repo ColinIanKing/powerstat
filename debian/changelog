@@ -1,3 +1,11 @@
+powerstat (0.02.19-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Update copyright year
+  * Make struct cpu_info pack more efficiently
+
+ -- Colin King <colin.king@canonical.com>  Sat, 6 Jul 2019 22:47:22 +0100
+
 powerstat (0.02.18-1) unstable; urgency=medium
 
   * Makefile: bump version
