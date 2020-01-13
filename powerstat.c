@@ -1765,6 +1765,7 @@ static char *power_get_rapl_domain_names(void)
 		char *tmp;
 		size_t new_len;
 
+		new_name[0] = '\0';
 		(void)snprintf(new_name, sizeof(new_name), "%s%s",
 				len == 0 ? "" : ", ", rapl->domain_name);
 		new_len = strlen(new_name);
