@@ -2574,6 +2574,8 @@ static int monitor(const int sock)
 		free(stats);
 		return -1;
 	}
+	s2 = s1;
+
 	if (opts & OPTS_CSTATES)
 		cpu_states_update();
 	if (opts & OPTS_GPU)
