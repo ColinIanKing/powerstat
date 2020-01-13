@@ -390,6 +390,7 @@ static int file_get_uint64(const char *const file, uint64_t *val)
 {
 	FILE *fp;
 
+	*val = 0;
 	if ((fp = fopen(file, "r")) == NULL)
 		return -1;
 
