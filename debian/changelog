@@ -1,3 +1,10 @@
+powerstat (0.02.22-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Add bash command completion script
+
+ -- Colin King <colin.king@canonical.com>  Wed, 26 Feb 2020 14:33:11 +0000
+
 powerstat (0.02.21-1) unstable; urgency=medium
 
   * Makefile: bump version
