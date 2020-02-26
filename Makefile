@@ -32,6 +32,7 @@ endif
 
 BINDIR=/usr/bin
 MANDIR=/usr/share/man/man8
+BASHDIR=/usr/share/bash-completion/completions
 
 powerstat: powerstat.o
 	$(CC) $(CFLAGS) $< -lm -o $@ $(LDFLAGS)
@@ -43,7 +44,7 @@ dist:
 	rm -rf powerstat-$(VERSION)
 	mkdir powerstat-$(VERSION)
 	cp -rp Makefile mascot powerstat.c powerstat.8 COPYING snap \
-		.travis.yml powerstat-$(VERSION)
+		.travis.yml bash-completion powerstat-$(VERSION)
 	tar -zcf powerstat-$(VERSION).tar.gz powerstat-$(VERSION)
 	rm -rf powerstat-$(VERSION)
 
@@ -56,3 +57,5 @@ install: powerstat powerstat.8.gz
 	cp powerstat ${DESTDIR}${BINDIR}
 	mkdir -p ${DESTDIR}${MANDIR}
 	cp powerstat.8.gz ${DESTDIR}${MANDIR}
+	mkdir -p ${DESTDIR}${BASHDIR}
+	cp bash-completion/powerstat ${DESTDIR}${BASHDIR}
