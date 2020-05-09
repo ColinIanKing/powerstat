@@ -30,9 +30,10 @@ CFLAGS += -Wabi -Wcast-qual -Wfloat-equal -Wmissing-declarations \
 	-Wno-missing-braces -Wno-sign-compare -Wno-multichar
 endif
 
-BINDIR=/usr/bin
-MANDIR=/usr/share/man/man8
-BASHDIR=/usr/share/bash-completion/completions
+prefix=/usr
+BINDIR=$(prefix)/bin
+MANDIR=$(prefix)/share/man/man8
+BASHDIR=$(prefix)/share/bash-completion/completions
 
 powerstat: powerstat.o
 	$(CC) $(CFLAGS) $< -lm -o $@ $(LDFLAGS)
