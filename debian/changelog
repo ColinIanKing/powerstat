@@ -1,3 +1,12 @@
+powerstat (0.02.23-1) unstable; urgency=medium
+
+  * Makefile: bump minor version
+  * Debian: remove compat, use debhelper-compat in Build-Depends
+  * Makefile: respect standard prefix= variable (LP: #1877744)
+  * zero the ws struct to clear static analysis warnings
+
+ -- Colin King <colin.king@canonical.com>  Fri, 15 May 2020 23:54:23 +0100
+
 powerstat (0.02.22-1) unstable; urgency=medium
 
   * Makefile: bump version
