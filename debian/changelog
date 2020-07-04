@@ -1,3 +1,10 @@
+powerstat (0.02.24-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Debian/control: Add Rules-Requires-Root: no
+
+ -- Colin King <colin.king@canonical.com>  Sat, 4 Jul 2020 21:30:37 +0100
+
 powerstat (0.02.23-1) unstable; urgency=medium
 
   * Makefile: bump minor version
