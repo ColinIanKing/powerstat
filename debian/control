@@ -1,10 +1,11 @@
 Source: powerstat
+Rules-Requires-Root: no
 Section: admin
 Priority: optional
 Maintainer: Colin King <colin.king@canonical.com>
-Uploaders: Kamal Mostafa <kamal@whence.com>
 Standards-Version: 4.1.2
-Build-Depends: debhelper (>= 13), debhelper-compat (=13)
+Build-Depends: debhelper (>= 13),
+               debhelper-compat (=13)
 Homepage: http://kernel.ubuntu.com/~cking/powerstat
 
 Package: powerstat
