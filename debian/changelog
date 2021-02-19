@@ -1,3 +1,10 @@
+powerstat (0.02.25-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Remove deprecated siginterrupt call, replace with SA_RESTART flag
+  * update copyright to 2021
+  * snapcraft: replace version-script with an override
+
 powerstat (0.02.24-1) unstable; urgency=medium
 
   * Makefile: bump version
