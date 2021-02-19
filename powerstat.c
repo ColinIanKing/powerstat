@@ -3109,14 +3109,13 @@ int main(int argc, char * const argv[])
 	for (i = 0; i < (int)SIZEOF_ARRAY(signals); i++) {
 		new_action.sa_handler = handle_sig;
 		sigemptyset(&new_action.sa_mask);
-		new_action.sa_flags = 0;
+		new_action.sa_flags = SA_RESTART;
 
 		if (sigaction(signals[i], &new_action, NULL) < 0) {
 			(void)fprintf(stderr, "sigaction failed: errno=%d (%s).\n",
 				errno, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
-		(void)siginterrupt(signals[i], 1);
 	}
 
 	log_init();
