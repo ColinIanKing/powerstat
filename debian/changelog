@@ -1,3 +1,12 @@
+powerstat (0.02.26-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Clean up some Coverity static analysis pedantic warnings
+  * Use strlcpy instead of strncpy for safe string handling
+  * Fix recv error when resources are low
+
+ -- Colin King <colin.king@canonical.com>  Thu, 24 Jun 2021 17:45:12 +0100
+
 powerstat (0.02.25-1) unstable; urgency=medium
 
   * Makefile: bump version
