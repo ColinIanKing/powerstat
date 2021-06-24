@@ -2704,7 +2704,10 @@ static int monitor(const int sock)
 				return 0;
 			}
 			if (len == -1) {
-				if (errno == EINTR) {
+				if ((errno == EINTR) ||
+				    (errno == ENOBUFS) ||
+				    (errno == ENOMEM)) {
+					/* Retry */
 					continue;
 				} else {
 					(void)fprintf(stderr,"recv failed: errno=%d (%s).\n",
