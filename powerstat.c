@@ -338,28 +338,27 @@ static const int signals[] = {
  */
 static size_t strlcpy(char *dst, const char *src, size_t len)
 {
-        char *d = dst;
-        const char *s = src;
-        size_t n = len;
+	char *d = dst;
+	const char *s = src;
+	size_t n = len;
 
-        if (n) {
-                while (--n) {
-                        char c = *s++;
+	if (n) {
+		while (--n) {
+			char c = *s++;
 
-                        *d++ = c;
-                        if (c == '\0')
-                                break;
-                }
-        }
+			*d++ = c;
+			if (c == '\0')
+				break;
+		}
+	}
 
-        if (!n) {
-                if (len)
-                        *d = '\0';
-                while (*s)
-                        s++;
-        }
-
-        return (s - src - 1);
+	if (!n) {
+		if (len)
+			*d = '\0';
+		while (*s)
+			s++;
+	}
+	return (s - src - 1);
 }
 
 /*
