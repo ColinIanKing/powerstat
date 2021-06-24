@@ -789,7 +789,7 @@ static void stats_clear_all(stats_t *const stats, const long int n)
 
 static void stats_cpu_freq_read(stats_t *const stats)
 {
-	struct dirent **cpu_list;
+	struct dirent **cpu_list = NULL;
 	int i, n_cpus, n = 0;
 	double total_freq = 0;
 
@@ -2279,7 +2279,7 @@ static int cpu_info_update(cpu_info_t *ci)
  */
 static void cpu_states_update(void)
 {
-	struct dirent **cpu_list;
+	struct dirent **cpu_list = NULL;
 	int i, n_cpus;
 	uint32_t max_cpu_id = 0;
 
@@ -2292,7 +2292,7 @@ static void cpu_states_update(void)
 		    isdigit(name[3])) {
 			int j, n_states;
 			char path[PATH_MAX];
-			struct dirent **states_list;
+			struct dirent **states_list = NULL;
 			uint32_t cpu_id = atoi(name + 3);
 
 			if (max_cpu_id < cpu_id)
@@ -2604,6 +2604,7 @@ static int monitor(const int sock)
 		return -1;
 	}
 
+	(void)memset(&s1, 0, sizeof(s1));
 	if (stats_read(&s1) < 0) {
 		free(stats);
 		return -1;
