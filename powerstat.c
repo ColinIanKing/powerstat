@@ -333,6 +333,36 @@ static const int signals[] = {
 };
 
 /*
+ *  strlcpy()
+ *	BSD strlcpy
+ */
+static size_t strlcpy(char *dst, const char *src, size_t len)
+{
+        char *d = dst;
+        const char *s = src;
+        size_t n = len;
+
+        if (n) {
+                while (--n) {
+                        char c = *s++;
+
+                        *d++ = c;
+                        if (c == '\0')
+                                break;
+                }
+        }
+
+        if (!n) {
+                if (len)
+                        *d = '\0';
+                while (*s)
+                        s++;
+        }
+
+        return (s - src - 1);
+}
+
+/*
  *   set_prioity
  *	set high priority to try and get netlink activity
  *	before short lived processes die
@@ -1779,7 +1809,7 @@ static char *power_get_rapl_domain_names(void)
 			break;
 		}
 		names = tmp;
-		(void)strncpy(names + len, new_name, new_len + 1);
+		(void)strlcpy(names + len, new_name, new_len + 1);
 		len += new_len;
 	}
 
@@ -2129,7 +2159,7 @@ static cpu_state_t *cpu_state_get(const char *name)
 		free(s);
 		return NULL;
 	}
-	(void)strncpy(s->name_short, name, len + 1);
+	(void)strlcpy(s->name_short, name, len + 1);
 	s->name_short[len] = '\0';
 	s->hash_next = cpu_states[h];
 	cpu_states[h] = s;
@@ -2172,10 +2202,10 @@ static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
 	(void)memset(buffer, 0, sizeof(buffer));
 	if ((fp = fopen(path, "r")) != NULL) {
 		if (fscanf(fp, "%63s", buffer) != 1)
-			(void)strncpy(buffer, "unknown", sizeof(buffer) - 1);
+			(void)strlcpy(buffer, "unknown", sizeof(buffer));
 		(void)fclose(fp);
 	} else {
-		(void)strncpy(buffer, state, sizeof(buffer) - 1);
+		(void)strlcpy(buffer, state, sizeof(buffer));
 	}
 	if ((ci->cpu_state = cpu_state_get(buffer)) == NULL) {
 		free(ci->state);
@@ -2413,7 +2443,7 @@ static int proc_cmdline(
 	}
 
 	if (n < 1) {
-		(void)strncpy(cmdline, "<unknown>", size);
+		(void)strlcpy(cmdline, "<unknown>", size);
 		n = 9;
 	}
 
