@@ -2401,9 +2401,9 @@ static void cpu_states_dump(void)
  *  proc_info_hash()
  * 	hash on PID
  */
-static inline int proc_info_hash(const pid_t pid)
+static inline uint32_t proc_info_hash(const pid_t pid)
 {
-	return pid % MAX_PIDS;
+	return (uint32_t)pid % MAX_PIDS;
 }
 
 /*
@@ -2455,7 +2455,8 @@ static int proc_cmdline(
  */
 static char *proc_info_get(const pid_t pid)
 {
-	int i = proc_info_hash(pid), j;
+	uint32_t i = proc_info_hash(pid);
+	int j;
 
 	for (j = 0; j < MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
 		if ((proc_info[i] != NULL) && (proc_info[i]->pid == pid))
@@ -2470,7 +2471,8 @@ static char *proc_info_get(const pid_t pid)
  */
 static void proc_info_free(const pid_t pid)
 {
-	int i = proc_info_hash(pid), j;
+	unsigned int i = proc_info_hash(pid);
+	int j;
 
 	for (j = 0; j < MAX_PIDS; j++, i = (i + 1) % MAX_PIDS) {
 		if ((proc_info[i] != NULL) && (proc_info[i]->pid == pid)) {
@@ -2505,7 +2507,8 @@ static void proc_info_unload(void)
  */
 static int proc_info_add(const pid_t pid)
 {
-	int i, j;
+	uint32_t i;
+	int j;
 	proc_info_t *info;
 	char path[PATH_MAX];
 	char cmdline[1024];
