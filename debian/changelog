@@ -1,3 +1,19 @@
+powerstat (0.02.27-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Makefile: add README.md to dist rule
+  * manual: update date, author email and copyright
+  * debian/watch: update watch path for tarball, move to version 4
+  * debian/copyright: Update copyright and git URL
+  * debian/control: update author email address and project URL
+  * Add README.md
+  * snapcraft: update to core20
+  * Return uint32_t from proc_info_hash
+  * snap: add supported build architectures
+  * Fix whitespace in strlcpy
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Wed, 10 Nov 2021 18:31:21 +0000
+
 powerstat (0.02.26-1) unstable; urgency=medium
 
   * Makefile: bump version
