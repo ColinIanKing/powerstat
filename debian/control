@@ -2,11 +2,11 @@ Source: powerstat
 Rules-Requires-Root: no
 Section: admin
 Priority: optional
-Maintainer: Colin King <colin.king@canonical.com>
-Standards-Version: 4.1.2
+Maintainer: Colin Ian King <colin.i.king@gmail.com>
+Standards-Version: 4.5.1
 Build-Depends: debhelper (>= 13),
                debhelper-compat (=13)
-Homepage: http://kernel.ubuntu.com/~cking/powerstat
+Homepage: https://github.com/ColinIanKing/powerstat
 
 Package: powerstat
 Architecture: linux-any
