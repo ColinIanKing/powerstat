@@ -1897,6 +1897,14 @@ static int power_get_rapl(
 /*
  *  power_get_gpu_i915()
  *	get Intel i915 GPU power stats
+ *
+ *  interface was removed from Linux 5.5 i915 driver by the commit:
+ *
+ *  commit 6311d260a1794d8ccef0ac8b39405fea0e1d9474
+ *  Author: Tvrtko Ursulin <tvrtko.ursulin@intel.com>
+ *  Date:   Thu Feb 6 14:07:25 2020 +0000
+ *  drm/i915/debugfs: Remove i915_energy_uJ
+ *
  */
 static int power_get_gpu_i915(
 	const stats_t *const s1,
