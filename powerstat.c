@@ -148,7 +148,6 @@ typedef struct cpu_info {
 	uint32_t	cpu_id;		/* CPU ID */
 } cpu_info_t;
 
-
 typedef struct {
 	double		threshold;
 	double		scale;
@@ -681,6 +680,7 @@ static void log_free(void)
 static void handle_sig(int dummy)
 {
 	(void)dummy;
+
 	stop_recv = true;
 }
 
@@ -1946,7 +1946,6 @@ static void power_get_gpu(
 	stats_t *s2,
 	stats_t *const res)
 {
-
 	if (power_get_gpu_i915(s1, s2, res) < 0) {
 		s2->value[POWER_GPU] = 0.0;
 		res->value[POWER_GPU] = 0.0;
