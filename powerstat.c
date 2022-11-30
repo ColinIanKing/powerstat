@@ -2309,8 +2309,13 @@ static void cpu_states_update(void)
 
 			n_states = scandir(path, &states_list, NULL, alphasort);
 			for (j = 0; j < n_states; j++) {
-				char *sname = states_list[j]->d_name;
+				char *sname;
 
+				if (!states_list[j])
+					continue;
+				sname = states_list[j]->d_name;
+				if (!sname)
+					continue;
 				if (!strncmp("state", sname, 5)) {
 					cpu_info_t *info;
 					info = cpu_info_get(states_list[j]->d_name, cpu_id);
