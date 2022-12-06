@@ -1,3 +1,16 @@
+powerstat (0.02.28-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Debian: update control to 4.6.1
+  * Add hint on how to use powerstat if -R option fails to find RAPL
+  * Widen range of power_domains and thermal_zones, make them signed integers
+  * powerstat: sanity check readdir name
+  * Update copyright year
+  * Clean up some whitespaces
+  * powerstat: add notes on deprecated i915 power interface
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Tue, 6 Dec 2022 13:09:11 +0000
+
 powerstat (0.02.27-1) unstable; urgency=medium
 
   * Makefile: bump version
