@@ -274,8 +274,8 @@ static volatile bool stop_recv;			/* sighandler stop flag */
 static bool power_calc_from_capacity = false;	/* true of power is calculated via capacity change */
 static const char *app_name = "powerstat";	/* name of application */
 static const char *(*get_domain)(const int i) = NULL;
-static uint8_t power_domains = 0;		/* Number of RAPL domains */
-static uint8_t thermal_zones = 0;		/* Number of thermal zones */
+static int power_domains = 0;		/* Number of RAPL domains */
+static int thermal_zones = 0;		/* Number of thermal zones */
 
 static const char *tz_get_type(const int n);
 static int tz_get_temperature(stats_t *stats);
@@ -979,7 +979,7 @@ static bool stats_gather(
  */
 static void stats_headings(void)
 {
-	uint8_t i;
+	int i;
 
 	if (opts & OPTS_USE_NETLINK)
 		(void)printf("  Time    User  Nice   Sys  Idle    IO  Run Ctxt/s  IRQ/s Fork Exec Exit  Watts");
@@ -1014,7 +1014,7 @@ static void stats_headings(void)
  */
 static void stats_ruler(void)
 {
-	uint8_t i;
+	int i;
 
 	if (opts & OPTS_USE_NETLINK)
 		(void)printf("-------- ----- ----- ----- ----- ----- ---- ------ ------ ---- ---- ---- ------ ");
@@ -1063,7 +1063,7 @@ static void stats_print(
 	const stats_t *const s)
 {
 	char buf[10];
-	uint8_t i;
+	int i;
 
 	if (summary) {
 		if (s->inaccurate[POWER_TOTAL])
