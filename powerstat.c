@@ -1889,6 +1889,7 @@ static int power_get_rapl(
 			return 0;
 		}
 		(void)printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
+		(void)printf("Force powerstat to run without RAPL by using the -z option\n");
 		return -1;
 	}
 	return 0;
