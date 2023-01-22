@@ -1414,9 +1414,9 @@ static int power_get_sys_fs(
 	*discharging = false;
 
 	if ((dir = opendir(SYS_CLASS_POWER_SUPPLY)) == NULL) {
-		(void)fprintf(stderr, "Device does not have %s, "
+		(void)fprintf(stderr, "Device does not have %s, errno=%d (%s), "
 			"cannot run the test.\n",
-			SYS_CLASS_POWER_SUPPLY);
+			SYS_CLASS_POWER_SUPPLY, errno, strerror(errno));
 		return -1;
 	}
 
@@ -1547,9 +1547,9 @@ static int power_get_proc_acpi(
 	*discharging = false;
 
 	if ((dir = opendir(PROC_ACPI_BATTERY)) == NULL) {
-		(void)fprintf(stderr, "Device does not have %s, "
+		(void)fprintf(stderr, "Device does not have %s, errno=%d (%s), "
 			"cannot run the test.\n",
-			PROC_ACPI_BATTERY);
+			PROC_ACPI_BATTERY, errno, strerror(errno));
 		return -1;
 	}
 
@@ -1715,7 +1715,8 @@ static int rapl_get_domains(void)
 
 	dir = opendir("/sys/class/powercap");
 	if (dir == NULL) {
-		(void)printf("Device does not have RAPL, cannot measure power usage.\n");
+		(void)printf("Device does not have RAPL, cannot measure power usage, errno=%d (%s).\n",
+			errno, strerror(errno));
 		return -1;
 	}
 
@@ -1778,7 +1779,7 @@ static int rapl_get_domains(void)
 	power_domains = MIN(n, MAX_POWER_DOMAINS);
 
 	if (!n)
-		(void)printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
+		(void)printf("Device does not have any RAPL domains, cannot power measure power usage\n");
 	return n;
 }
 
@@ -1833,6 +1834,7 @@ static int power_get_rapl(
 	stats->value[POWER_TOTAL] = 0.0;
 	get_domain = rapl_get_domain;
 	*discharging = false;
+	bool access_failure = false;
 
 	t_now = gettime_to_double();
 
@@ -1845,8 +1847,11 @@ static int power_get_rapl(
 			"/sys/class/powercap/%s/energy_uj",
 			rapl->name);
 
-		if ((fp = fopen(path, "r")) == NULL)
+		if ((fp = fopen(path, "r")) == NULL) {
+			if ((errno == EPERM) || (errno == EACCES))
+				access_failure = true;
 			continue;
+		}
 
 		if (fscanf(fp, "%lf\n", &ujoules) == 1) {
 			double t_delta = t_now - rapl->t_last;
@@ -1888,8 +1893,12 @@ static int power_get_rapl(
 			*discharging = true;	/* Lie */
 			return 0;
 		}
-		(void)printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
-		(void)printf("Force powerstat to run without RAPL by using the -z option\n");
+		if (access_failure) {
+			(void)printf("Cannot access RAPL domain energy informatiom, try running with root permission.\n");
+		} else {
+			(void)printf("Device does not have any RAPL domains, cannot power measure power usage.\n");
+			(void)printf("Force powerstat to run without RAPL by using the -z option\n");
+		}
 		return -1;
 	}
 	return 0;
