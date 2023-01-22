@@ -104,6 +104,8 @@ typedef enum {
 	CPU_PROCS_RUN,
 	CPU_PROCS_BLK,
 	CPU_FREQ,
+	CPU_FREQ_MIN,
+	CPU_FREQ_MAX,
 	PROC_FORK,
 	PROC_EXEC,
 	PROC_EXIT,
@@ -789,7 +791,9 @@ static void stats_cpu_freq_read(stats_t *const stats)
 {
 	struct dirent **cpu_list = NULL;
 	int i, n_cpus, n = 0;
-	double total_freq = 0;
+	double total_freq = 0.0, freq_min = 1E12, freq_max = 0.0;
+	double mant = 1.0;	/* geometric mean mantissa */
+	long int expon = 0;	/* goemetric mean exponent */
 
 	n_cpus = scandir("/sys/devices/system/cpu", &cpu_list, NULL, alphasort);
 	for (i = 0; i < n_cpus; i++) {
@@ -803,7 +807,18 @@ static void stats_cpu_freq_read(stats_t *const stats)
 				"/sys/devices/system/cpu/%s/cpufreq/scaling_cur_freq",
 				name);
 			if (file_get_uint64(path, &freq) == 0) {
-				total_freq += (double)freq / 1000.0;	/* In MHz */
+				int e;
+				const double freq_mhz = (double)freq / 1000.0;
+				const double f = frexp(freq_mhz, &e);
+
+				mant *= f;
+				expon += e;
+
+				total_freq += freq_mhz;
+				if (freq_mhz > freq_max)
+					freq_max = freq_mhz;
+				if (freq_mhz < freq_min)
+					freq_min = freq_mhz;
 				n++;
 			}
 		}
@@ -812,10 +827,18 @@ static void stats_cpu_freq_read(stats_t *const stats)
 	if (n_cpus > -1)
 		free(cpu_list);
 
-	if (n)
-		stats->value[CPU_FREQ] = total_freq / n;
-	else
-		stats->value[CPU_FREQ] = 0;
+	if (n) {
+		const double inverse_n = 1.0 / (double)n;
+		const double geomean = pow(mant, inverse_n) * pow(2.0, (double)expon * inverse_n);
+
+		stats->value[CPU_FREQ] = geomean;
+		stats->value[CPU_FREQ_MIN] = freq_min;
+		stats->value[CPU_FREQ_MAX] = freq_max;
+	} else {
+		stats->value[CPU_FREQ] = 0.0;
+		stats->value[CPU_FREQ_MIN] = 0.0;
+		stats->value[CPU_FREQ_MAX] = 0.0;
+	}
 }
 
 /*
@@ -967,6 +990,8 @@ static bool stats_gather(
 	res->value[CPU_PROCS_RUN] = s2->inaccurate[CPU_PROCS_RUN] ? NAN : s2->value[CPU_PROCS_RUN];
 	res->value[CPU_PROCS_BLK] = s2->inaccurate[CPU_PROCS_BLK] ? NAN : s2->value[CPU_PROCS_BLK];
 	res->value[CPU_FREQ] = s2->value[CPU_FREQ];
+	res->value[CPU_FREQ_MIN] = s2->value[CPU_FREQ_MIN];
+	res->value[CPU_FREQ_MAX] = s2->value[CPU_FREQ_MAX];
 
 	return true;
 }
@@ -988,7 +1013,7 @@ static void stats_headings(void)
 		    OPTS_THERMAL_ZONE |
 		    OPTS_CPU_FREQ))
 		(void)putchar(' ');
-		   
+
 	if (opts & OPTS_DOMAIN_STATS) {
 		for (i = 0; i < power_domains; i++)
 			(void)printf(" %6.6s",
@@ -999,7 +1024,7 @@ static void stats_headings(void)
 			(void)printf(" %6.6s", tz_get_type(i));
 	}
 	if (opts & OPTS_CPU_FREQ)
-		(void)printf(" %9.9s", "CPU Freq");
+		(void)printf(" %9.9s %9.9s %9.9s", "CPU Freq", "Freq Min", "Freq Max");
 	(void)printf("\n");
 }
 
@@ -1106,8 +1131,11 @@ static void stats_print(
 		for (i = 0; i < thermal_zones; i++)
 			(void)printf(" %6.2f", s->value[THERMAL_ZONE_0 + i]);
 	}
-	if (opts & OPTS_CPU_FREQ)
+	if (opts & OPTS_CPU_FREQ) {
 		(void)printf(" %s", cpu_freq_format(s->value[CPU_FREQ]));
+		(void)printf(" %s", cpu_freq_format(s->value[CPU_FREQ_MIN]));
+		(void)printf(" %s", cpu_freq_format(s->value[CPU_FREQ_MAX]));
+	}
 	(void)printf("\n");
 }
 
@@ -1144,7 +1172,7 @@ static void stats_average_stddev_min_max(
 				if (stats[i].value[j] < min->value[j])
 					min->value[j] = stats[i].value[j];
 				total += stats[i].value[j];
-				
+
 				f = frexp(stats[i].value[j], &e);
 				mant *= f;
 				expon += e;
@@ -1154,7 +1182,7 @@ static void stats_average_stddev_min_max(
 		if (valid) {
 			double inverse_n = 1.0 / (double)valid;
 
-			geometric_mean->value[j] = pow(mant, inverse_n) * 
+			geometric_mean->value[j] = pow(mant, inverse_n) *
 				pow(2.0, (double)expon / (double)valid);
 			average->value[j] = total / (double)valid;
 			total = 0.0;
