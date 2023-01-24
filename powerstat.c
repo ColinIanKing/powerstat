@@ -791,7 +791,7 @@ static void stats_cpu_freq_read(stats_t *const stats)
 {
 	struct dirent **cpu_list = NULL;
 	int i, n_cpus, n = 0;
-	double total_freq = 0.0, freq_min = 1E12, freq_max = 0.0;
+	double freq_min = 1E12, freq_max = 0.0;
 	double mant = 1.0;	/* geometric mean mantissa */
 	long int expon = 0;	/* goemetric mean exponent */
 
@@ -814,7 +814,6 @@ static void stats_cpu_freq_read(stats_t *const stats)
 				mant *= f;
 				expon += e;
 
-				total_freq += freq_mhz;
 				if (freq_mhz > freq_max)
 					freq_max = freq_mhz;
 				if (freq_mhz < freq_min)
