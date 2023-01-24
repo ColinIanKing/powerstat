@@ -1739,6 +1739,10 @@ static int rapl_get_domains(void)
 		FILE *fp;
 		rapl_info_t *rapl;
 
+		printf("%s\n", entry->d_name);
+		/* Ignore duplicated RAPL info from mmio */
+		if (strncmp(entry->d_name, "intel-rapl-mmio", 15))
+			continue;
 		/* Ignore non Intel RAPL interfaces */
 		if (strncmp(entry->d_name, "intel-rapl", 10))
 			continue;
