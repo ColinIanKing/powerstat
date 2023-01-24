@@ -1,3 +1,15 @@
+powerstat (0.03.00-1) unstable; urgency=medium
+
+  * Manual: update copyright year
+  * Update manual date
+  * Makefile: bump version
+  * Remove unused variable total_freq
+  * Add min/max CPU frequencies, calculate CPU freq using geometric mean
+  * Remove i915 power measurements
+  * Add extra errno error information and check for access issues
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Tue, 24 Jan 2023 09:45:24 +0000
+
 powerstat (0.02.28-1) unstable; urgency=medium
 
   * Makefile: bump version
