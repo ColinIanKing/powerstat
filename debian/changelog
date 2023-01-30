@@ -1,3 +1,13 @@
+powerstat (0.03.01-1) unstable; urgency=medium
+
+  * Makefile: bump minor version
+  * Debain/changelog: fix typos
+  * Fix spelling mistake "informatiom" -> "information"
+  * Makefile: use xz compression for dist tarball
+  * Ignore duplicated power readings from RAPL mmio
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Mon, 30 Jan 2023 15:33:19 +0000
+
 powerstat (0.03.00-1) unstable; urgency=medium
 
   * Manual: update copyright year
