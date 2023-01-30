@@ -178,7 +178,7 @@ powerstat (0.02.12-1) unstable; urgency=medium
   * snapcraft: add default type and grade keys
   * snapcraft: Makefile: remove icon hack
   * reduce the scope of the variable 'buf'
-  * snapcraft.yaml: remove bogos unnecessary libs
+  * snapcraft.yaml: remove bogus unnecessary libs
   * Add snapcraft files
   * update copyright year
 
@@ -440,7 +440,7 @@ powerstat (0.01.29-1) unstable; urgency=low
 powerstat (0.01.28-1) unstable; urgency=low
 
   * Makefile: bump version
-  * debain/control: update standards version
+  * debian/control: update standards version
   * Re-work battery not connected failure message
   * Add -S option to compute standard average on capacity values
   * Fix comment
