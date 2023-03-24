@@ -1,3 +1,12 @@
+powerstat (0.03.02-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Debian: control: update standards version to 4.6.2
+  * Don't account for duplicated RAPL domains, make Watts field total
+    of all RAPL domains
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Fri, 24 Mar 2023 10:39:11 +0000
+
 powerstat (0.03.01-1) unstable; urgency=medium
 
   * Makefile: bump minor version
