@@ -249,7 +249,6 @@ typedef struct rapl_info {
 	double max_energy_uj;		/* Energy in micro Joules */
 	double last_energy_uj;		/* Last energy reading in micro Joules */
 	double t_last;			/* Time of last reading */
-	bool is_package;		/* Is it a package? */
 } rapl_info_t;
 
 /* Thermal zone info */
@@ -1706,16 +1705,24 @@ static const char *rapl_get_domain(const int n)
 	for (i = 0; i < n && rapl; i++) {
 		rapl = rapl->next;
 	}
-	if (rapl) {
-		if (rapl->is_package) {
-			static char buf[128];
-
-			(void)snprintf(buf, sizeof(buf), "pkg-%s", rapl->domain_name + 8);
-			return buf;
-		}
+	if (rapl)
 		return rapl->domain_name;
-	}
 	return "unknown";
+}
+
+/*
+ *  rapl_domain_unique()
+ *	returns true if domain_name is not in rapl_list
+ */
+static bool rapl_domain_unique(const char *domain_name)
+{
+	rapl_info_t *rapl;
+
+	for (rapl = rapl_list; rapl; rapl = rapl->next) {
+		if (!strcmp(rapl->domain_name, domain_name))
+			return false;
+	}
+	return true;
 }
 
 /*
@@ -1739,9 +1746,8 @@ static int rapl_get_domains(void)
 		FILE *fp;
 		rapl_info_t *rapl;
 
-		/* Ignore duplicated RAPL info from mmio */
-		if (strncmp(entry->d_name, "intel-rapl-mmio", 15))
-			continue;
+		printf("powercap: %s\n", entry->d_name);
+
 		/* Ignore non Intel RAPL interfaces */
 		if (strncmp(entry->d_name, "intel-rapl", 10))
 			continue;
@@ -1777,17 +1783,27 @@ static int rapl_get_domains(void)
 
 			if (fgets(domain_name, sizeof(domain_name), fp) != NULL) {
 				domain_name[strcspn(domain_name, "\n")] = '\0';
-				rapl->domain_name = strdup(domain_name);
+
+				/* Truncate package name */
+				if (!strncmp(domain_name, "package-", 8)) {
+					char buf[sizeof(domain_name)];
+
+					(void)snprintf(buf, sizeof(buf), "pkg-%s", domain_name + 8);
+					strlcpy(domain_name, buf, sizeof(domain_name));
+				}
+
+				if (rapl_domain_unique(domain_name))
+					rapl->domain_name = strdup(domain_name);
 			}
 			(void)fclose(fp);
 		}
+
 		if (rapl->domain_name == NULL) {
 			free(rapl->name);
 			free(rapl);
 			continue;
 		}
 
-		rapl->is_package = (strncmp(rapl->domain_name, "package-", 8) == 0);
 		rapl->next = rapl_list;
 		rapl_list = rapl;
 		n++;
@@ -1892,7 +1908,7 @@ static int power_get_rapl(
 					(ujoules - last_energy_uj) / (t_delta * 1000000.0);
 				stats->inaccurate[POWER_DOMAIN_0 + n] = false;
 			}
-			if (rapl->is_package && !stats->inaccurate[POWER_DOMAIN_0 + n]) {
+			if (!stats->inaccurate[POWER_DOMAIN_0 + n]) {
 				stats->value[POWER_TOTAL] += stats->value[POWER_DOMAIN_0 + n];
 			}
 			n++;
