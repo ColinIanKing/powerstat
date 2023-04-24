@@ -3147,8 +3147,14 @@ int main(int argc, char * const argv[])
 		} else {
 			proc_info_load();
 
-			if (netlink_listen(sock) < 0)
-				goto abort_sock;
+			if (netlink_listen(sock) < 0) {
+				(void)printf("Cannot show process activity: "
+					"netlink listen failed, errno=%d (%s).\n",
+					errno, strerror(errno));
+				opts &= ~OPTS_USE_NETLINK;
+				(void)close(sock);
+				sock = -1;
+			}
 		}
 	}
 
