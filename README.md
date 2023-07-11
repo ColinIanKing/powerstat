@@ -1,5 +1,9 @@
 # Powerstat
 
+<a href="https://repology.org/project/powerstat/versions">
+    <img src="https://repology.org/badge/vertical-allrepos/powerstat.svg" alt="Packaging status" align="right">
+</a>
+
 Powerstat measures the power consumption of a laptop using the ACPI battery information. The output is like vmstat but also shows power consumption statistics. At the end of a run, powerstat will calculate the average, standard deviation and min/max of the gathered data.
 
 ## Example
