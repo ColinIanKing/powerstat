@@ -1,3 +1,5 @@
+![Powerstat Logo](mascot/powerstat-256x256.png)
+
 # Powerstat
 
 <a href="https://repology.org/project/powerstat/versions">
