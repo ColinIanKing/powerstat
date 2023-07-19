@@ -60,4 +60,4 @@ install: powerstat powerstat.8.gz
 	mkdir -p ${DESTDIR}${MANDIR}
 	cp powerstat.8.gz ${DESTDIR}${MANDIR}
 	mkdir -p ${DESTDIR}${BASHDIR}
-	cp bash-completion/powerstat ${DESTDIR}${BASHDIR}
+	cp -p bash-completion/powerstat ${DESTDIR}${BASHDIR}
