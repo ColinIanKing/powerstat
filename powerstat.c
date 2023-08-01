@@ -331,6 +331,7 @@ static const int signals[] = {
 #endif
 };
 
+#if !(__GLIBC_PREREQ(2, 38))
 /*
  *  strlcpy()
  *	BSD strlcpy
@@ -359,6 +360,7 @@ static size_t strlcpy(char *dst, const char *src, size_t len)
 	}
 	return (s - src - 1);
 }
+#endif /* !(__GLIBC_PREREQ(2, 38)) */
 
 /*
  *   set_prioity
