@@ -1810,7 +1810,7 @@ static int rapl_get_domains(void)
 	power_domains = MIN(n, MAX_POWER_DOMAINS);
 
 	if (!n)
-		(void)printf("Device does not have any RAPL domains, cannot power measure power usage\n");
+		(void)printf("Device does not have any RAPL domains, cannot measure power usage\n");
 	return n;
 }
 
