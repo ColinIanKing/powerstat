@@ -446,16 +446,20 @@ static const char *cpu_freq_format(const double freq)
 	double scale = 1e18;
 	size_t i;
 
-	for (i = 0; cpu_freq_scale[i].suffix; i++) {
-		if (f < cpu_freq_scale[i].threshold) {
-			suffix = cpu_freq_scale[i].suffix;
-			scale = cpu_freq_scale[i].scale;
-			break;
+	if (freq > 0) {
+		for (i = 0; cpu_freq_scale[i].suffix; i++) {
+			if (f < cpu_freq_scale[i].threshold) {
+				suffix = cpu_freq_scale[i].suffix;
+				scale = cpu_freq_scale[i].scale;
+				break;
+			}
 		}
-	}
 
-	(void)snprintf(buffer, sizeof(buffer), "%5.2f %-3s",
-		f / scale, suffix);
+		(void)snprintf(buffer, sizeof(buffer), "%5.2f %-3s",
+			f / scale, suffix);
+	} else {
+		(void)snprintf(buffer, sizeof(buffer), "  N/A     ");
+	}
 
 	return buffer;
 }
@@ -1028,9 +1032,9 @@ static void stats_headings(void)
 
 	if (opts & (OPTS_DOMAIN_STATS |
 		    OPTS_THERMAL_ZONE |
-		    OPTS_CPU_FREQ))
+		    OPTS_CPU_FREQ |
+		    OPTS_GPU_FREQ))
 		(void)putchar(' ');
-
 	if (opts & OPTS_DOMAIN_STATS) {
 		for (i = 0; i < power_domains; i++)
 			(void)printf(" %6.6s",
