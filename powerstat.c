@@ -2938,7 +2938,7 @@ static void show_help(char *const argv[])
 {
 	(void)printf("%s, version %s\n\n", app_name, VERSION);
 	(void)printf("usage: %s [options] [delay [count]]\n", argv[0]);
-	(void)printf("\t-a enable all sampling collection options (-c, -f, -t and -H)\n");
+	(void)printf("\t-a enable all sampling collection options (-c, -f, -g, -t and -H)\n");
 	(void)printf("\t-b redo a sample if a system is busy, considered less than %d%% CPU idle\n", IDLE_THRESHOLD);
 	(void)printf("\t-c show C-State statistics at end of the run\n");
 	(void)printf("\t-d specify delay before starting, default is %" PRId32 " seconds\n", start_delay);
