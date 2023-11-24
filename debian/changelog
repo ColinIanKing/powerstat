@@ -1,3 +1,15 @@
+powerstat (0.04.01-1) unstable; urgency=medium
+
+  * rpm: update spec for 0.04.01
+  * Makefile: bump version
+  * Typo powerstat.c missing dot
+  * Rename strlcpy with bsd_strlcpy to avoid name clashing with glibc-2.38
+  * Show logo in README
+  * Create RPM spec file
+  * Preserve bash completion file timestamp
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Fri, 24 Nov 2023 10:48:11 +0000
+
 powerstat (0.04.00-1) unstable; urgency=medium
 
   * Makefile: bump version
