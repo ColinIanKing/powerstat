@@ -1,3 +1,15 @@
+powerstat (0.04.00-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Report N/A for unknown CPU/GPU frequencies
+  * Makefile: remove snap from make dist rule
+  * Update manual and help for -a option, note it enables -g
+  * Add -g GPU frequency stats option
+  * Remove snapcraft
+  * README.md: Add repology link
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Fri, 24 Nov 2023 10:13:24 +0000
+
 powerstat (0.03.03-1) unstable; urgency=medium
 
   * Makefile:: bump version
