@@ -43,5 +43,8 @@ deviation and min/max of the gathered data.
 %{_datadir}/bash-completion/completions/powerstat
 
 %changelog
+* Fri Nov 24 2023 Colin Ian King <colin.king@gmail.com> - 0.04.01-1
+- Update to 0.04.01
+
 * Wed Jul 19 2023 Benson Muite <benson_muite@emailplus.org> - 0.04.00-1
 - Initial packaging
