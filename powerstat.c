@@ -334,10 +334,10 @@ static const int signals[] = {
 };
 
 /*
- *  strlcpy()
+ *  bsd_strlcpy()
  *	BSD strlcpy
  */
-static size_t strlcpy(char *dst, const char *src, size_t len)
+static size_t bsd_strlcpy(char *dst, const char *src, size_t len)
 {
 	char *d = dst;
 	const char *s = src;
@@ -1816,7 +1816,7 @@ static int rapl_get_domains(void)
 					char buf[sizeof(domain_name)];
 
 					(void)snprintf(buf, sizeof(buf), "pkg-%s", domain_name + 8);
-					strlcpy(domain_name, buf, sizeof(domain_name));
+					bsd_strlcpy(domain_name, buf, sizeof(domain_name));
 				}
 
 				if (rapl_domain_unique(domain_name))
@@ -1870,7 +1870,7 @@ static char *power_get_rapl_domain_names(void)
 			break;
 		}
 		names = tmp;
-		(void)strlcpy(names + len, new_name, new_len + 1);
+		(void)bsd_strlcpy(names + len, new_name, new_len + 1);
 		len += new_len;
 	}
 
@@ -2178,7 +2178,7 @@ static cpu_state_t *cpu_state_get(const char *name)
 		free(s);
 		return NULL;
 	}
-	(void)strlcpy(s->name_short, name, len + 1);
+	(void)bsd_strlcpy(s->name_short, name, len + 1);
 	s->name_short[len] = '\0';
 	s->hash_next = cpu_states[h];
 	cpu_states[h] = s;
@@ -2221,10 +2221,10 @@ static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
 	(void)memset(buffer, 0, sizeof(buffer));
 	if ((fp = fopen(path, "r")) != NULL) {
 		if (fscanf(fp, "%63s", buffer) != 1)
-			(void)strlcpy(buffer, "unknown", sizeof(buffer));
+			(void)bsd_strlcpy(buffer, "unknown", sizeof(buffer));
 		(void)fclose(fp);
 	} else {
-		(void)strlcpy(buffer, state, sizeof(buffer));
+		(void)bsd_strlcpy(buffer, state, sizeof(buffer));
 	}
 	if ((ci->cpu_state = cpu_state_get(buffer)) == NULL) {
 		free(ci->state);
@@ -2467,7 +2467,7 @@ static int proc_cmdline(
 	}
 
 	if (n < 1) {
-		(void)strlcpy(cmdline, "<unknown>", size);
+		(void)bsd_strlcpy(cmdline, "<unknown>", size);
 		n = 9;
 	}
 
