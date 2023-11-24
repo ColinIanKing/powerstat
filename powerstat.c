@@ -106,6 +106,7 @@ typedef enum {
 	CPU_FREQ,
 	CPU_FREQ_MIN,
 	CPU_FREQ_MAX,
+	GPU_FREQ,
 	PROC_FORK,
 	PROC_EXEC,
 	PROC_EXIT,
@@ -191,6 +192,7 @@ static const char *cpu_path = "/sys/devices/system/cpu";
 #define OPTS_CPU_FREQ		(0x1000)	/* Average CPU frequency */
 #define OPTS_NO_STATS_HEADINGS	(0x2000)	/* No stats headings */
 #define OPTS_THERMAL_ZONE	(0x4000)	/* Thermal zones */
+#define OPTS_GPU_FREQ		(0x8000)	/* GPU frequency */
 
 #define OPTS_USE_NETLINK	(OPTS_SHOW_PROC_ACTIVITY | \
 				 OPTS_REDO_NETLINK_BUSY |  \
@@ -786,6 +788,19 @@ static void stats_clear_all(stats_t *const stats, const long int n)
 		stats_clear(&stats[i]);
 }
 
+static void stats_gpu_freq_read(stats_t *const stats)
+{
+	uint64_t freq = 0;
+
+	if (file_get_uint64("/sys/class/drm/card0/gt_cur_freq_mhz", &freq) == 0) {
+		stats->value[GPU_FREQ] = (double)freq;
+	} else if (file_get_uint64("/sys/class/graphics/fb0/device/drm/card0/gt_cur_freq_mhz", &freq) == 0) {
+		stats->value[GPU_FREQ] = (double)freq;
+	} else {
+		stats->value[GPU_FREQ] = 0.0;
+	}
+}
+
 static void stats_cpu_freq_read(stats_t *const stats)
 {
 	struct dirent **cpu_list = NULL;
@@ -902,6 +917,9 @@ static int stats_read(stats_t *const stats)
 	if (opts & OPTS_CPU_FREQ)
 		stats_cpu_freq_read(stats);
 
+	if (opts & OPTS_GPU_FREQ)
+		stats_gpu_freq_read(stats);
+
 	return 0;
 }
 
@@ -990,6 +1008,7 @@ static bool stats_gather(
 	res->value[CPU_FREQ] = s2->value[CPU_FREQ];
 	res->value[CPU_FREQ_MIN] = s2->value[CPU_FREQ_MIN];
 	res->value[CPU_FREQ_MAX] = s2->value[CPU_FREQ_MAX];
+	res->value[GPU_FREQ] = s2->value[GPU_FREQ];
 
 	return true;
 }
@@ -1023,6 +1042,8 @@ static void stats_headings(void)
 	}
 	if (opts & OPTS_CPU_FREQ)
 		(void)printf(" %9.9s %9.9s %9.9s", "CPU Freq", "Freq Min", "Freq Max");
+	if (opts & OPTS_GPU_FREQ)
+		(void)printf(" %9.9s", "GPU Freq");
 	(void)printf("\n");
 }
 
@@ -1048,6 +1069,8 @@ static void stats_ruler(void)
 			(void)printf(" ------");
 	}
 	if (opts & OPTS_CPU_FREQ)
+		(void)printf(" --------- --------- ---------");
+	if (opts & OPTS_GPU_FREQ)
 		(void)printf(" ---------");
 	(void)printf("\n");
 }
@@ -1134,6 +1157,8 @@ static void stats_print(
 		(void)printf(" %s", cpu_freq_format(s->value[CPU_FREQ_MIN]));
 		(void)printf(" %s", cpu_freq_format(s->value[CPU_FREQ_MAX]));
 	}
+	if (opts & OPTS_GPU_FREQ)
+		(void)printf(" %s", cpu_freq_format(s->value[GPU_FREQ]));
 	(void)printf("\n");
 }
 
@@ -2919,6 +2944,7 @@ static void show_help(char *const argv[])
 	(void)printf("\t-d specify delay before starting, default is %" PRId32 " seconds\n", start_delay);
 	(void)printf("\t-D show RAPL domain power measurements (enables -R option)\n");
 	(void)printf("\t-f show average CPU frequency\n");
+	(void)printf("\t-g show average GPU frequency\n");
 	(void)printf("\t-h show help\n");
 	(void)printf("\t-H show spread of measurements with power histogram\n");
 	(void)printf("\t-i specify CPU idle threshold, used in conjunction with -b\n");
@@ -2949,9 +2975,9 @@ int main(int argc, char * const argv[])
 
 	for (;;) {
 #if defined(POWERSTAT_X86)
-		int c = getopt(argc, argv, "abd:cDfhHi:nprszStR");
+		int c = getopt(argc, argv, "abd:cDfghHi:nprszStR");
 #else
-		int c = getopt(argc, argv, "abd:cDfhHi:nprszSt");
+		int c = getopt(argc, argv, "abd:cDfghHi:nprszSt");
 #endif
 		if (c == -1)
 			break;
@@ -2959,6 +2985,7 @@ int main(int argc, char * const argv[])
 		case 'a':
 			opts |= (OPTS_CSTATES |
 				 OPTS_CPU_FREQ |
+				 OPTS_GPU_FREQ |
 				 OPTS_HISTOGRAM |
 				 OPTS_THERMAL_ZONE);
 			break;
@@ -2986,6 +3013,9 @@ int main(int argc, char * const argv[])
 			break;
 		case 'f':
 			opts |= OPTS_CPU_FREQ;
+			break;
+		case 'g':
+			opts |= OPTS_GPU_FREQ;
 			break;
 		case 'h':
 			show_help(argv);

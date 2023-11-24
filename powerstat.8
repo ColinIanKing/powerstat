@@ -2,7 +2,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH POWERSTAT 8 "24 January 2023"
+.TH POWERSTAT 8 "24 November 2023"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -59,6 +59,9 @@ enable extra power stats showing all the power domain power readings. This curre
 compute the geometric mean of all on-line CPU core frequencies. Unfortunately a CPU core is always active to gather any form of stats because
 powerstat has to be running to do so, so these statistics are skewed by this.  It is best to use this option with a reasonably large delay
 (more than 5 seconds) between samples to reduce the overhead of powerstat.
+.TP
+.B \-g
+report GPU frequency of card0.
 .TP
 .B \-h
 show help.
