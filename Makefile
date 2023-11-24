@@ -45,7 +45,7 @@ powerstat.8.gz: powerstat.8
 dist:
 	rm -rf powerstat-$(VERSION)
 	mkdir powerstat-$(VERSION)
-	cp -rp Makefile mascot powerstat.c powerstat.8 COPYING snap \
+	cp -rp Makefile mascot powerstat.c powerstat.8 COPYING \
 		.travis.yml bash-completion README.md powerstat-$(VERSION)
 	tar -Jcf powerstat-$(VERSION).tar.xz powerstat-$(VERSION)
 	rm -rf powerstat-$(VERSION)
