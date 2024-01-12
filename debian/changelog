@@ -1,3 +1,13 @@
+powerstat (0.04.02-1) unstable; urgency=medium
+
+  * rpm: update spec for 0.04.02
+  * Makefile: bump version
+  * Makefile: add -O2 to optimization flags
+  * Update copyright year to 2024
+  * debian/rules: add missing hardening settings
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Fri, 12 Jan 2024 10:42:36 +0000
+
 powerstat (0.04.01-1) unstable; urgency=medium
 
   * rpm: update spec for 0.04.01
