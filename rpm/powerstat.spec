@@ -1,7 +1,7 @@
 Summary:  Measures the power consumption of a machine
 Name:     powerstat
 License:  GPL-2.0-only
-Version:  0.04.00
+Version:  0.04.02
 Release:  1%{?dist}
 
 URL:      https://github.com/ColinIanKing/powerstat
@@ -43,6 +43,9 @@ deviation and min/max of the gathered data.
 %{_datadir}/bash-completion/completions/powerstat
 
 %changelog
+* Fri Jan 12 2023 Colin Ian King <colin.king@gmail.com> - 0.04.02-1
+- Update to 0.04.02
+
 * Fri Nov 24 2023 Colin Ian King <colin.king@gmail.com> - 0.04.01-1
 - Update to 0.04.01
 
