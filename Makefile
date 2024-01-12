@@ -19,7 +19,7 @@
 
 VERSION=0.04.01
 
-CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"'
+CFLAGS += -Wall -Wextra -DVERSION='"$(VERSION)"' -O2
 
 #
 # Pedantic flags
