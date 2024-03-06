@@ -1,3 +1,11 @@
+powerstat (0.04.03-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * Re-use last ujoules setting if current value is invalid
+  * Ignore power readings that are zero
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Wed, 6 Mar 2024 14:12:10 +0000
+
 powerstat (0.04.02-1) unstable; urgency=medium
 
   * rpm: update spec for 0.04.02
