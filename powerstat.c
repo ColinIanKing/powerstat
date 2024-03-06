@@ -1917,29 +1917,32 @@ static int power_get_rapl(
 			double t_delta = t_now - rapl->t_last;
 			double last_energy_uj = rapl->last_energy_uj;
 
-			rapl->t_last = t_now;
+			/* ensure we have a valid value */
+			if (ujoules > 0.0) {
+				rapl->t_last = t_now;
 
-			/* Wrapped around since last time? */
-			if (ujoules - rapl->last_energy_uj < 0.0) {
-				rapl->last_energy_uj = ujoules;
-				ujoules += rapl->max_energy_uj;
-			} else {
-				rapl->last_energy_uj = ujoules;
-			}
+				/* Wrapped around since last time? */
+				if (ujoules - rapl->last_energy_uj < 0.0) {
+					rapl->last_energy_uj = ujoules;
+					ujoules += rapl->max_energy_uj;
+				} else {
+					rapl->last_energy_uj = ujoules;
+				}
 
-			if (first || (t_delta <= 0.0)) {
-				stats->value[POWER_DOMAIN_0 + n] = 0.0;
-				stats->inaccurate[POWER_DOMAIN_0 + n] = true;
-			} else {
-				stats->value[POWER_DOMAIN_0 + n] =
-					(ujoules - last_energy_uj) / (t_delta * 1000000.0);
-				stats->inaccurate[POWER_DOMAIN_0 + n] = false;
+				if (first || (t_delta <= 0.0)) {
+					stats->value[POWER_DOMAIN_0 + n] = 0.0;
+					stats->inaccurate[POWER_DOMAIN_0 + n] = true;
+				} else {
+					stats->value[POWER_DOMAIN_0 + n] =
+						(ujoules - last_energy_uj) / (t_delta * 1000000.0);
+					stats->inaccurate[POWER_DOMAIN_0 + n] = false;
+				}
+				if (!stats->inaccurate[POWER_DOMAIN_0 + n]) {
+					stats->value[POWER_TOTAL] += stats->value[POWER_DOMAIN_0 + n];
+				}
+				n++;
+				*discharging = true;
 			}
-			if (!stats->inaccurate[POWER_DOMAIN_0 + n]) {
-				stats->value[POWER_TOTAL] += stats->value[POWER_DOMAIN_0 + n];
-			}
-			n++;
-			*discharging = true;
 		}
 		(void)fclose(fp);
 	}
