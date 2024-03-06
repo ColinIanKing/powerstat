@@ -1917,6 +1917,10 @@ static int power_get_rapl(
 			double t_delta = t_now - rapl->t_last;
 			double last_energy_uj = rapl->last_energy_uj;
 
+			/* Invalid, re-use last value as a workaround */
+			if (ujoules <= 0.0)
+				ujoules = rapl->last_energy_uj;
+
 			/* ensure we have a valid value */
 			if (ujoules > 0.0) {
 				rapl->t_last = t_now;
