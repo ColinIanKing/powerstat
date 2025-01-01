@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011-2021 Canonical
- * Copyright (C) 2021-2024 Colin Ian King
+ * Copyright (C) 2021-2025 Colin Ian King
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -2233,6 +2233,7 @@ static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
 	} else {
 		(void)bsd_strlcpy(buffer, state, sizeof(buffer));
 	}
+printf("%s %s\n", path, buffer);
 	if ((ci->cpu_state = cpu_state_get(buffer)) == NULL) {
 		free(ci->state);
 		free(ci);
