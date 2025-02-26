@@ -1,3 +1,12 @@
+powerstat (0.04.04-1) unstable; urgency=medium
+
+  * Makefile: bump version
+  * debian/control: update Standards-Version to 4.7.1.1
+  * powerstat: fix potential divide by zero by time_total
+  * Update copyright year
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Wed, 26 Feb 2025 13:21:53 +0000
+
 powerstat (0.04.03-1) unstable; urgency=medium
 
   * Makefile: bump version
