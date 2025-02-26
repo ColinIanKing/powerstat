@@ -2410,7 +2410,7 @@ static void cpu_states_dump(void)
 		}
 		/* time_total into microseconds */
 		time_total *= 1000000.0;
-		s->resident = 100.0 * (double)state_total / (double)time_total;
+		s->resident = time_total > 0.0 ? 100.0 * (double)state_total / (double)time_total : 0.0;
 		c0_percent -= s->resident;
 
 		if (!strcmp(s->name_short, "C0"))
