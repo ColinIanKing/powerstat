@@ -3,7 +3,7 @@ Rules-Requires-Root: no
 Section: admin
 Priority: optional
 Maintainer: Colin Ian King <colin.i.king@gmail.com>
-Standards-Version: 4.7.1.1
+Standards-Version: 4.7.2
 Build-Depends: debhelper (>= 13),
                debhelper-compat (=13)
 Homepage: https://github.com/ColinIanKing/powerstat
