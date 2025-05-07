@@ -2233,7 +2233,6 @@ static cpu_info_t *cpu_info_get(const char *state, const uint32_t cpu_id)
 	} else {
 		(void)bsd_strlcpy(buffer, state, sizeof(buffer));
 	}
-printf("%s %s\n", path, buffer);
 	if ((ci->cpu_state = cpu_state_get(buffer)) == NULL) {
 		free(ci->state);
 		free(ci);
