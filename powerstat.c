@@ -1907,7 +1907,6 @@ static int power_get_rapl(
 		(void)snprintf(path, sizeof(path),
 			"/sys/class/powercap/%s/energy_uj",
 			rapl->name);
-
 		if ((fp = fopen(path, "r")) == NULL) {
 			if ((errno == EPERM) || (errno == EACCES))
 				access_failure = true;
