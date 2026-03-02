@@ -618,6 +618,7 @@ static int log_printf(const char *const fmt, ...)
 	log_item_t *log_item;
 	size_t len;
 
+	(void)memset(&ap, 0, sizeof(ap));
 	va_start(ap, fmt);
 	get_time(tmbuffer, sizeof(tmbuffer));
 	(void)vsnprintf(buffer, sizeof(buffer), fmt, ap);
