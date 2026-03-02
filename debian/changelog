@@ -1,3 +1,9 @@
+powerstat (0.04.06-1) unstable; urgency=medium
+
+  * Sync with upstream version 0.04.06
+
+ -- Colin Ian King <colin.i.king@gmail.com>  Mon, 2 Mar 2026 18:04:23 +0100
+
 powerstat (0.04.05-1) unstable; urgency=medium
 
   * Makefile: bump version
